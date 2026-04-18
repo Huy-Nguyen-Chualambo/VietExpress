@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VietExpress
 
-## Getting Started
+## Cau hinh database Supabase
 
-First, run the development server:
+Du an da su dung Supabase SDK trong `src/lib/supabase/*`.
+
+**⚠️ Trước tiên, vui lòng xem [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) để lấy Supabase credentials thật từ dashboard.**
+
+1. Tao file `.env.local` tu file mau:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+copy .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Dien cac bien moi truong trong `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `NEXT_PUBLIC_SUPABASE_URL`: Project URL cua Supabase (Dashboard > Settings > API)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Anon public key (Dashboard > Settings > API)
+- `SUPABASE_SERVICE_ROLE_KEY`: Service role key (cho server-side operations)
+- `SUPABASE_DB_URL`: Connection string Postgres de dung cho migration/ORM va Prisma
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Neu ban dang dung connection string Shared Pooler, thay password vao:
 
-## Learn More
+```text
+postgresql://postgres.dhtnbwqtbyugozmwronx:[YOUR-PASSWORD]@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres
+```
 
-To learn more about Next.js, take a look at the following resources:
+Luu y:
+- Khong commit `.env.local` len git.
+- `SUPABASE_DB_URL` khong duoc dung trong client browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Prisma + PostgreSQL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Project da duoc cau hinh Prisma voi datasource PostgreSQL trong `prisma/schema.prisma`.
 
-## Deploy on Vercel
+**Cau hinh:**
+- Prisma client singleton: `src/lib/prisma.ts`
+- Connection pooling (port 6543) cho app queries: `DATABASE_URL`
+- Direct connection (port 5432) cho migrations: `DIRECT_URL`
+- Initial migration: `prisma/migrations/0001_init/migration.sql`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Chay migration de tao bang trong database:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run prisma:migrate -- --name=init
+```
+
+**Hoac push schema truc tiep (khong tao migration moi):**
+
+```bash
+npm run prisma:push
+```
+
+**Generate lai Prisma client sau khi sua schema:**
+
+```bash
+npm run prisma:generate
+```
+
+## Chay du an
+
+```bash
+npm install
+npm run dev
+```
+
+Neu gap loi cache/runtime hoac xung dot port khi dev tren Windows:
+
+```bash
+npm run dev:safe
+```
+
+Mo `http://localhost:3000` de xem giao dien.
+
+## Seed du lieu mau
+
+Seed tao tai khoan nhan vien, khach hang va du lieu van hanh mau cho dashboard:
+
+```bash
+npm run prisma:seed
+```
+
+Tai khoan nhan vien mac dinh:
+
+- `admin@vietexpress.vn` / `Admin@123456`
+- `ops.bac@vietexpress.vn` / `OpsBac@123456`
+- `ops.nam@vietexpress.vn` / `OpsNam@123456`
+
+Tai khoan khach hang mac dinh:
+
+- `customer.abc@vietexpress.vn` / `Customer@123456`
+- `customer.xyz@vietexpress.vn` / `Customer@123456`
+- `customer.mno@vietexpress.vn` / `Customer@123456`
+
+## Optional: Supabase Agent Skills
+
+Neu ban muon cai bo huong dan/automation cho AI tools khi lam viec voi Supabase:
+
+```bash
+npx skills add supabase/agent-skills
+```

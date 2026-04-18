@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// NextAuth Models
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?   @map("password_hash")
+  accounts      Account[]
+  sessions      Session[]
+  profile       Profile?
+  orders        Order[]
+  quoteRequests  QuoteRequest[]
+  notifications  Notification[]
+  customerSetting CustomerSetting?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId  String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Profile {
+  id        String   @id @db.Uuid
+  user      User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  fullName  String?  @map("full_name") @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  company   String?  @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  role      String   @default("customer") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profiles")
+}
+
+model Order {
+  id                String          @id @default(cuid())
+  userId            String          @db.Uuid @map("user_id")
+  orderCode         String          @unique @map("order_code") @db.VarChar(50)
+  origin            String          @db.VarChar(255)
+  destination       String          @db.VarChar(255)
+  serviceType       String          @map("service_type") @db.VarChar(50)
+  status            String          @default("pending") @db.VarChar(30)
+  currentLocation   String?         @map("current_location") @db.VarChar(255)
+  weightKg          Int?            @map("weight_kg")
+  totalAmount       Int?            @map("total_amount")
+  estimatedDelivery DateTime?       @map("estimated_delivery") @db.Timestamptz(6)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackingEvents    TrackingEvent[]
+
+  @@index([userId, status])
+  @@map("orders")
+}
+
+model QuoteRequest {
+  id            String   @id @default(cuid())
+  userId        String   @db.Uuid @map("user_id")
+  quoteCode     String   @unique @map("quote_code") @db.VarChar(50)
+  serviceType   String   @map("service_type") @db.VarChar(50)
+  origin        String   @db.VarChar(255)
+  destination   String   @db.VarChar(255)
+  weight        String?  @db.VarChar(50)
+  dimensions    String?  @db.VarChar(100)
+  note          String?  @db.Text
+  status        String   @default("pending") @db.VarChar(30)
+  quotedPrice   Int?     @map("quoted_price")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("quote_requests")
+}
+
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  orderId     String   @map("order_id")
+  status      String   @db.VarChar(30)
+  location    String   @db.VarChar(255)
+  description String   @db.Text
+  eventTime   DateTime @default(now()) @map("event_time") @db.Timestamptz(6)
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, eventTime(sort: Desc)])
+  @@map("tracking_events")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid @map("user_id")
+  type      String   @default("info") @db.VarChar(20)
+  title     String   @db.VarChar(255)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model CustomerSetting {
+  id                String   @id @default(cuid())
+  userId            String   @db.Uuid @unique @map("user_id")
+  language          String   @default("vi") @db.VarChar(10)
+  theme             String   @default("light") @db.VarChar(20)
+  emailNotifications Boolean  @default(true) @map("email_notifications")
+  smsNotifications  Boolean   @default(false) @map("sms_notifications")
+  pushNotifications Boolean   @default(true) @map("push_notifications")
+  companyName       String?   @map("company_name") @db.VarChar(255)
+  phone             String?   @db.VarChar(50)
+  address           String?   @db.VarChar(255)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_settings")
+}
