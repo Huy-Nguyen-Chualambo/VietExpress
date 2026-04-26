@@ -46,7 +46,7 @@ export default function Footer() {
                 <Truck className="w-5 h-5 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <span className="text-xl font-bold font-(family-name:--font-display) tracking-tight">
+                <span className="text-xl font-bold font-display tracking-tight">
                   VietExpress
                 </span>
               </div>
@@ -85,7 +85,7 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h4 className="text-sm font-bold font-(family-name:--font-display) uppercase tracking-wider mb-5 text-white/90">
+            <h4 className="text-sm font-bold font-display uppercase tracking-wider mb-5 text-white/90">
               Dịch vụ
             </h4>
             <ul className="space-y-3">
@@ -104,7 +104,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="text-sm font-bold font-(family-name:--font-display) uppercase tracking-wider mb-5 text-white/90">
+            <h4 className="text-sm font-bold font-display uppercase tracking-wider mb-5 text-white/90">
               Công ty
             </h4>
             <ul className="space-y-3">
@@ -123,7 +123,7 @@ export default function Footer() {
 
           {/* Support */}
           <div>
-            <h4 className="text-sm font-bold font-(family-name:--font-display) uppercase tracking-wider mb-5 text-white/90">
+            <h4 className="text-sm font-bold font-display uppercase tracking-wider mb-5 text-white/90">
               Hỗ trợ
             </h4>
             <ul className="space-y-3">
@@ -160,3 +160,4 @@ export default function Footer() {
     </footer>
   )
 }
+

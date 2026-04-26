@@ -22,7 +22,7 @@ import {
 const customerNav = [
   { name: 'Tổng quan', href: '/dashboard/khach-hang', icon: LayoutDashboard },
   { name: 'Đơn hàng', href: '/dashboard/khach-hang/don-hang', icon: Package },
-  { name: 'Báo giá', href: '/dashboard/khach-hang/bao-gia', icon: FileText },
+  { name: 'Tạo đơn', href: '/dashboard/khach-hang/bao-gia', icon: FileText },
   { name: 'Theo dõi', href: '/dashboard/khach-hang/theo-doi', icon: MapPin },
   { name: 'Thông báo', href: '/dashboard/khach-hang/thong-bao', icon: Bell },
   { name: 'Cài đặt', href: '/dashboard/khach-hang/cai-dat', icon: Settings },
@@ -57,7 +57,7 @@ export default function CustomerDashboardLayout({
                 <Truck className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <span className="text-lg font-bold font-(family-name:--font-display) text-gradient-brand">
+                <span className="text-lg font-bold font-display text-gradient-brand">
                   VietExpress
                 </span>
                 <div className="text-[9px] text-muted-foreground -mt-0.5 tracking-widest uppercase">
@@ -138,7 +138,7 @@ export default function CustomerDashboardLayout({
           </button>
 
           <div className="flex-1">
-            <h2 className="text-lg font-semibold font-(family-name:--font-display)">
+            <h2 className="text-lg font-semibold font-display">
               {customerNav.find((n) => n.href === pathname)?.name || 'Dashboard'}
             </h2>
           </div>
@@ -157,3 +157,4 @@ export default function CustomerDashboardLayout({
     </div>
   )
 }
+

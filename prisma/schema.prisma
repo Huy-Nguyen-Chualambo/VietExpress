@@ -23,6 +23,7 @@ model User {
   quoteRequests  QuoteRequest[]
   notifications  Notification[]
   customerSetting CustomerSetting?
+  actionLogs      ActionLog[]
 
   @@map("users")
 }
@@ -162,4 +163,21 @@ model CustomerSetting {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("customer_settings")
+}
+
+model ActionLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @db.Uuid @map("actor_id")
+  mode       String   @default("manual") @db.VarChar(20)
+  actionType String   @map("action_type") @db.VarChar(80)
+  entityType String?  @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.VarChar(120)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([mode, createdAt])
+  @@index([actionType, createdAt])
+  @@index([actorId, createdAt])
+  @@map("action_logs")
 }

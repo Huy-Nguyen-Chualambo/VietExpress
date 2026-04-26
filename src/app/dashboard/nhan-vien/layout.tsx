@@ -19,11 +19,13 @@ import {
   Bell,
   Briefcase,
   ClipboardList,
+  CheckCircle2,
 } from 'lucide-react'
 
 const employeeNav = [
   { name: 'Tổng quan', href: '/dashboard/nhan-vien', icon: LayoutDashboard },
   { name: 'Quản lý vận đơn', href: '/dashboard/nhan-vien/van-don', icon: Package },
+  { name: 'Xác nhận lấy hàng', href: '/dashboard/nhan-vien/xac-nhan-lay-hang', icon: CheckCircle2 },
   { name: 'Khách hàng', href: '/dashboard/nhan-vien/khach-hang', icon: Users },
   { name: 'Tuyến đường', href: '/dashboard/nhan-vien/tuyen-duong', icon: Route },
   { name: 'Báo giá', href: '/dashboard/nhan-vien/bao-gia', icon: ClipboardList },
@@ -60,7 +62,7 @@ export default function EmployeeDashboardLayout({
                 <Truck className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <span className="text-lg font-bold font-(family-name:--font-display) tracking-tight">
+                <span className="text-lg font-bold font-display tracking-tight">
                   VietExpress
                 </span>
                 <div className="text-[9px] text-white/40 -mt-0.5 tracking-widest uppercase">
@@ -141,7 +143,7 @@ export default function EmployeeDashboardLayout({
           </button>
 
           <div className="flex-1">
-            <h2 className="text-lg font-semibold font-(family-name:--font-display)">
+            <h2 className="text-lg font-semibold font-display">
               {employeeNav.find((n) => n.href === pathname)?.name || 'Dashboard'}
             </h2>
           </div>
@@ -160,3 +162,4 @@ export default function EmployeeDashboardLayout({
     </div>
   )
 }
+

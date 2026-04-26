@@ -1,10 +1,19 @@
 import { prisma } from '@/lib/prisma'
 import { requireEmployeeSession } from '@/lib/employee-portal'
 import { formatCurrencyVnd } from '@/lib/customer-portal'
+import { safeCountActionLogs } from '@/lib/action-log'
 import { BarChart3, Package, TrendingUp, Users } from 'lucide-react'
+
+function getStartOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
 
 export default async function EmployeeStatsPage() {
   await requireEmployeeSession()
+
+  const startOfToday = getStartOfToday()
 
   const [
     totalOrders,
@@ -14,6 +23,10 @@ export default async function EmployeeStatsPage() {
     totalCustomers,
     totalEmployees,
     revenueSummary,
+    manualActionsToday,
+    automationActionsToday,
+    manualOrderCreatesToday,
+    manualPickupConfirmsToday,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: 'completed' } }),
@@ -25,6 +38,24 @@ export default async function EmployeeStatsPage() {
       where: { status: 'completed' },
       _sum: { totalAmount: true },
       _avg: { totalAmount: true },
+    }),
+    safeCountActionLogs({
+      mode: 'manual',
+      createdAt: { gte: startOfToday },
+    }),
+    safeCountActionLogs({
+      mode: 'automation',
+      createdAt: { gte: startOfToday },
+    }),
+    safeCountActionLogs({
+      mode: 'manual',
+      actionType: 'CUSTOMER_CREATE_ORDER',
+      createdAt: { gte: startOfToday },
+    }),
+    safeCountActionLogs({
+      mode: 'manual',
+      actionType: 'EMPLOYEE_CONFIRM_PICKUP',
+      createdAt: { gte: startOfToday },
     }),
   ])
 
@@ -77,6 +108,43 @@ export default async function EmployeeStatsPage() {
           <div className="text-sm text-muted-foreground">Nhan vien: {totalEmployees}</div>
           <div className="text-sm text-muted-foreground">Don bi huy: {cancelledOrders}</div>
           <div className="text-sm text-muted-foreground">Don hoan thanh: {completedOrders}</div>
+        </div>
+      </section>
+
+      <section className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl border border-border/50 p-6 space-y-3">
+          <h2 className="text-base font-semibold font-display">Baseline thủ công (hôm nay)</h2>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl border border-border p-4">
+              <div className="text-muted-foreground text-xs mb-1">Tác vụ manual</div>
+              <div className="text-xl font-bold font-display">{manualActionsToday}</div>
+            </div>
+            <div className="rounded-xl border border-border p-4">
+              <div className="text-muted-foreground text-xs mb-1">Tạo đơn manual</div>
+              <div className="text-xl font-bold font-display">{manualOrderCreatesToday}</div>
+            </div>
+            <div className="rounded-xl border border-border p-4">
+              <div className="text-muted-foreground text-xs mb-1">Xác nhận lấy hàng</div>
+              <div className="text-xl font-bold font-display">{manualPickupConfirmsToday}</div>
+            </div>
+            <div className="rounded-xl border border-border p-4">
+              <div className="text-muted-foreground text-xs mb-1">Tác vụ automation</div>
+              <div className="text-xl font-bold font-display">{automationActionsToday}</div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Giữ chế độ manual trước để lấy baseline, sau đó bật workflow và so sánh theo cùng khung thời gian.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border/50 p-6 space-y-3">
+          <h2 className="text-base font-semibold font-display">Gợi ý so sánh</h2>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div>1. Thu baseline manual liên tục 7-14 ngày.</div>
+            <div>2. Bật workflow với executionMode=automation cho cùng quy trình.</div>
+            <div>3. So sánh số tác vụ, thời gian xử lý và tỷ lệ trạng thái hoàn thành.</div>
+            <div>4. Đối chiếu thêm tỷ lệ lỗi và retry để đánh giá ổn định vận hành.</div>
+          </div>
         </div>
       </section>
     </div>

@@ -94,7 +94,7 @@ export default function Services() {
           <div className="reveal opacity-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-soft border border-brand/10 mb-6">
             <span className="text-sm font-medium text-brand">Dịch vụ của chúng tôi</span>
           </div>
-          <h2 className="reveal opacity-0 text-3xl sm:text-4xl lg:text-5xl font-bold font-(family-name:--font-display) tracking-tight mb-4">
+          <h2 className="reveal opacity-0 text-3xl sm:text-4xl lg:text-5xl font-bold font-display tracking-tight mb-4">
             Giải pháp vận tải{' '}
             <span className="text-gradient-brand">toàn diện</span>
           </h2>
@@ -125,7 +125,7 @@ export default function Services() {
 
               {/* Content */}
               <div className="px-6 pb-6 relative z-10">
-                <h3 className="text-lg font-bold font-(family-name:--font-display) mb-2 group-hover:text-brand transition-colors">
+                <h3 className="text-lg font-bold font-display mb-2 group-hover:text-brand transition-colors">
                   {service.title}
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
@@ -151,3 +151,4 @@ export default function Services() {
     </section>
   )
 }
+

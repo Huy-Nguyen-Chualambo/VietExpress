@@ -51,7 +51,7 @@ export default function Header() {
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-gold rounded-full border-2 border-white" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold font-(family-name:--font-display) tracking-tight text-gradient-brand">
+              <span className="text-xl font-bold font-display tracking-tight text-gradient-brand">
                 VietExpress
               </span>
               <span className="text-[10px] text-muted-foreground -mt-1 tracking-widest uppercase">
@@ -176,3 +176,4 @@ export default function Header() {
     </header>
   )
 }
+

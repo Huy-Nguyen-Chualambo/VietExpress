@@ -121,7 +121,7 @@ export default function RegisterPage() {
             <div className="w-14 h-14 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
               <Truck className="w-7 h-7 text-white" strokeWidth={2} />
             </div>
-            <h1 className="text-2xl font-bold text-white font-(family-name:--font-display)">
+            <h1 className="text-2xl font-bold text-white font-display">
               Đăng ký tài khoản
             </h1>
             <p className="text-sm text-white/70 mt-1">
@@ -329,3 +329,4 @@ export default function RegisterPage() {
     </div>
   )
 }
+

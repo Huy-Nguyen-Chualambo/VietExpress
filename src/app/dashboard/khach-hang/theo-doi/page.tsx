@@ -55,7 +55,7 @@ export default async function TrackingPage({
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
               Theo dõi
             </p>
-            <h1 className="text-2xl font-bold font-(family-name:--font-display)">
+            <h1 className="text-2xl font-bold font-display">
               Trạng thái vận đơn theo thời gian thực
             </h1>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -76,7 +76,7 @@ export default async function TrackingPage({
       <section className="grid lg:grid-cols-5 gap-6">
         <aside className="lg:col-span-2 bg-white rounded-2xl border border-border/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-            <h2 className="text-base font-semibold font-(family-name:--font-display)">
+            <h2 className="text-base font-semibold font-display">
               Danh sách đơn
             </h2>
             <Package className="w-4 h-4 text-muted-foreground" />
@@ -122,7 +122,7 @@ export default async function TrackingPage({
             <>
               <div className="px-6 py-4 border-b border-border flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="text-base font-semibold font-(family-name:--font-display)">
+                  <h2 className="text-base font-semibold font-display">
                     {selectedOrder.orderCode}
                   </h2>
                   <p className="text-sm text-muted-foreground">
@@ -163,7 +163,7 @@ export default async function TrackingPage({
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <Route className="w-4 h-4 text-brand" />
-                    <h3 className="font-semibold font-(family-name:--font-display)">
+                    <h3 className="font-semibold font-display">
                       Dòng thời gian tracking
                     </h3>
                   </div>
@@ -203,7 +203,7 @@ export default async function TrackingPage({
                 <div className="rounded-xl border border-border p-5 bg-muted/20">
                   <div className="flex items-center gap-2 mb-2">
                     <MapPin className="w-4 h-4 text-brand" />
-                    <h3 className="font-semibold font-(family-name:--font-display)">
+                    <h3 className="font-semibold font-display">
                       Thông tin tóm tắt
                     </h3>
                   </div>
@@ -230,3 +230,4 @@ export default async function TrackingPage({
     </div>
   )
 }
+

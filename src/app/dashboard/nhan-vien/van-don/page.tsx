@@ -108,6 +108,7 @@ export default async function EmployeeOrdersPage() {
                   </div>
                   <form action={updateOrderStatusAction} className="pt-2 border-t border-border/70 grid gap-2 lg:grid-cols-4">
                     <input type="hidden" name="orderId" value={order.id} />
+                    <input type="hidden" name="executionMode" value="manual" />
                     <select
                       name="status"
                       defaultValue={order.status}

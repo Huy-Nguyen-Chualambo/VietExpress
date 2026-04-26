@@ -43,9 +43,10 @@ export default function RootLayout({
       lang="vi"
       className={`${plusJakarta.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
+      <body className="min-h-full flex flex-col font-body">
         <Providers>{children}</Providers>
       </body>
     </html>
   )
 }
+

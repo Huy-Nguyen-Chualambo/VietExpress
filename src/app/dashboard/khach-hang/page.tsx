@@ -97,7 +97,7 @@ export default async function CustomerDashboard() {
             <p className="text-white/75 text-sm uppercase tracking-[0.25em]">
               Tổng quan khách hàng
             </p>
-            <h1 className="text-2xl font-bold font-(family-name:--font-display)">
+            <h1 className="text-2xl font-bold font-display">
               Xin chào, {profileName}
             </h1>
             <p className="text-white/75 text-sm leading-relaxed">
@@ -119,7 +119,7 @@ export default async function CustomerDashboard() {
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 text-white text-sm font-semibold rounded-lg hover:bg-white/30 transition-colors"
             >
               <TrendingUp className="w-4 h-4" />
-              Yêu cầu báo giá
+              Tạo đơn mới
             </Link>
           </div>
         </div>
@@ -139,7 +139,7 @@ export default async function CustomerDashboard() {
                 {card.hint}
               </span>
             </div>
-            <div className="text-2xl font-bold font-(family-name:--font-display)">
+            <div className="text-2xl font-bold font-display">
               {typeof card.value === 'number' ? card.value.toLocaleString('vi-VN') : card.value}
             </div>
             <div className="text-sm text-muted-foreground">{card.label}</div>
@@ -150,7 +150,7 @@ export default async function CustomerDashboard() {
       <section className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-border/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-            <h3 className="text-base font-semibold font-(family-name:--font-display)">
+            <h3 className="text-base font-semibold font-display">
               Đơn hàng gần đây
             </h3>
             <Link
@@ -212,7 +212,7 @@ export default async function CustomerDashboard() {
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-border/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-              <h3 className="text-base font-semibold font-(family-name:--font-display)">
+              <h3 className="text-base font-semibold font-display">
                 Báo giá gần đây
               </h3>
               <FileText className="w-4 h-4 text-muted-foreground" />
@@ -247,7 +247,7 @@ export default async function CustomerDashboard() {
 
           <div className="bg-white rounded-xl border border-border/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-              <h3 className="text-base font-semibold font-(family-name:--font-display)">
+              <h3 className="text-base font-semibold font-display">
                 Thông báo mới
               </h3>
               <Bell className="w-4 h-4 text-muted-foreground" />
@@ -281,7 +281,7 @@ export default async function CustomerDashboard() {
 
           <div className="bg-white rounded-xl border border-border/50 overflow-hidden p-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold font-(family-name:--font-display)">
+              <h3 className="text-base font-semibold font-display">
                 Theo dõi gần nhất
               </h3>
               <Link href="/dashboard/khach-hang/theo-doi" className="text-sm text-brand font-medium hover:underline">
@@ -309,3 +309,4 @@ export default async function CustomerDashboard() {
     </div>
   )
 }
+

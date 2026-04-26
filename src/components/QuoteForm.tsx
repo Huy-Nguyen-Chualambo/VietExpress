@@ -15,30 +15,33 @@ import {
 } from 'lucide-react'
 
 const serviceOptions = [
-  { value: 'ftl', label: 'Vận tải nguyên xe (FTL)' },
-  { value: 'ltl', label: 'Vận tải ghép hàng (LTL)' },
+  { value: 'ftl', label: 'Vận chuyển trên 20kg' },
+  { value: 'ltl', label: 'Vận chuyển dưới 20kg' },
   { value: '3pl', label: 'Dịch vụ 3PL' },
   { value: 'express', label: 'Chuyển phát nhanh' },
   { value: 'cold', label: 'Vận tải lạnh' },
   { value: 'doc', label: 'Chứng từ & Thủ tục' },
 ]
 
+const initialFormData = {
+  name: '',
+  phone: '',
+  email: '',
+  company: '',
+  service: '',
+  from: '',
+  to: '',
+  weight: '',
+  dimensions: '',
+  note: '',
+}
+
 export default function QuoteForm() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    company: '',
-    service: '',
-    from: '',
-    to: '',
-    weight: '',
-    dimensions: '',
-    note: '',
-  })
+  const [formData, setFormData] = useState(initialFormData)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -61,19 +64,45 @@ export default function QuoteForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError('')
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const response = await fetch('/api/quote-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-    setIsSubmitting(false)
-    setIsSubmitted(true)
+      const payload = await response.json()
 
-    setTimeout(() => setIsSubmitted(false), 5000)
+      if (!response.ok) {
+        setError(payload?.error || 'Không thể gửi yêu cầu báo giá. Vui lòng thử lại.')
+        return
+      }
+
+      setFormData(initialFormData)
+      setIsSubmitted(true)
+      setTimeout(() => setIsSubmitted(false), 5000)
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Không thể gửi yêu cầu báo giá. Vui lòng thử lại.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
+    if (error) {
+      setError('')
+    }
+
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
@@ -92,7 +121,7 @@ export default function QuoteForm() {
                 <FileText className="w-4 h-4 text-brand" />
                 <span className="text-sm font-medium text-brand">Báo giá</span>
               </div>
-              <h2 className="reveal opacity-0 text-3xl sm:text-4xl font-bold font-(family-name:--font-display) tracking-tight mb-4">
+              <h2 className="reveal opacity-0 text-3xl sm:text-4xl font-bold font-display tracking-tight mb-4">
                 Nhận báo giá{' '}
                 <span className="text-gradient-brand">miễn phí</span>
               </h2>
@@ -133,7 +162,7 @@ export default function QuoteForm() {
                 <div>
                   <div className="text-sm text-muted-foreground">Trụ sở chính</div>
                   <div className="text-sm font-semibold text-foreground">
-                    123 Nguyễn Huệ, Q.1, TP.HCM
+                    456 Trần Hưng Đạo, P.Tây Hồ, Hà Nội
                   </div>
                 </div>
               </div>
@@ -148,7 +177,7 @@ export default function QuoteForm() {
                   <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
                     <Send className="w-8 h-8 text-green-600" />
                   </div>
-                  <h3 className="text-2xl font-bold font-(family-name:--font-display) text-green-700">
+                  <h3 className="text-2xl font-bold font-display text-green-700">
                     Gửi thành công!
                   </h3>
                   <p className="text-muted-foreground">
@@ -157,6 +186,11 @@ export default function QuoteForm() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  {error ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  ) : null}
                   <div className="grid sm:grid-cols-2 gap-5">
                     {/* Name */}
                     <div>
@@ -219,7 +253,7 @@ export default function QuoteForm() {
                         name="company"
                         value={formData.company}
                         onChange={handleChange}
-                        placeholder="Tên công ty"
+                        placeholder="Tên công ty (tùy chọn)"
                         className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm placeholder:text-muted-foreground/50 focus:bg-white transition-colors"
                       />
                     </div>
@@ -260,7 +294,7 @@ export default function QuoteForm() {
                         required
                         value={formData.from}
                         onChange={handleChange}
-                        placeholder="TP. Hồ Chí Minh"
+                        placeholder="VD: 123 Nguyễn Huệ, Q.1, TP.HCM"
                         className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm placeholder:text-muted-foreground/50 focus:bg-white transition-colors"
                       />
                     </div>
@@ -275,7 +309,7 @@ export default function QuoteForm() {
                         required
                         value={formData.to}
                         onChange={handleChange}
-                        placeholder="Hà Nội"
+                        placeholder="VD: 456 Trần Hưng Đạo, P.Tây Hồ, Hà Nội"
                         className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm placeholder:text-muted-foreground/50 focus:bg-white transition-colors"
                       />
                     </div>
@@ -300,7 +334,7 @@ export default function QuoteForm() {
                     <div>
                       <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
                         <Ruler className="w-3.5 h-3.5 text-brand" />
-                        Kích thước (DxRxC)
+                        Kích thước (DàixRộngxCao cm)
                       </label>
                       <input
                         type="text"
@@ -356,3 +390,4 @@ export default function QuoteForm() {
     </section>
   )
 }
+

@@ -50,7 +50,7 @@ export default async function OrdersPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
               Đơn hàng
             </p>
-            <h1 className="text-2xl font-bold font-(family-name:--font-display)">
+            <h1 className="text-2xl font-bold font-display">
               Danh sách vận đơn của bạn
             </h1>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -75,7 +75,7 @@ export default async function OrdersPage() {
               <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
                 <card.icon className={`w-5 h-5 ${card.color}`} />
               </div>
-              <span className="text-2xl font-bold font-(family-name:--font-display)">
+              <span className="text-2xl font-bold font-display">
                 {counts[card.key] || 0}
               </span>
             </div>
@@ -86,7 +86,7 @@ export default async function OrdersPage() {
 
       <section className="bg-white rounded-2xl border border-border/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-base font-semibold font-(family-name:--font-display)">
+          <h2 className="text-base font-semibold font-display">
             Tất cả đơn hàng
           </h2>
           <span className="text-sm text-muted-foreground">{orders.length} đơn</span>
@@ -98,13 +98,13 @@ export default async function OrdersPage() {
             <h3 className="text-lg font-semibold mb-2">Chưa có đơn hàng nào</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Khi có đơn thật được tạo trong hệ thống, chúng sẽ hiển thị ở đây. Bạn có
-              thể bắt đầu bằng việc gửi một yêu cầu báo giá.
+              thể bắt đầu bằng việc tạo đơn mới ngay bây giờ.
             </p>
             <Link
               href="/dashboard/khach-hang/bao-gia"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold mt-5"
             >
-              Gửi báo giá
+              Tạo đơn ngay
             </Link>
           </div>
         ) : (
@@ -127,7 +127,7 @@ export default async function OrdersPage() {
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold font-(family-name:--font-display)">
+                        <h3 className="text-lg font-semibold font-display">
                           {order.orderCode}
                         </h3>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${orderStatusClass(order.status)}`}>
@@ -205,3 +205,4 @@ export default async function OrdersPage() {
     </div>
   )
 }
+

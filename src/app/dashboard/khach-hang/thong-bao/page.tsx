@@ -52,7 +52,7 @@ export default async function NotificationsPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
               Thông báo
             </p>
-            <h1 className="text-2xl font-bold font-(family-name:--font-display)">
+            <h1 className="text-2xl font-bold font-display">
               Trung tâm thông báo của bạn
             </h1>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -80,7 +80,7 @@ export default async function NotificationsPage() {
 
       <section className="bg-white rounded-2xl border border-border/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-base font-semibold font-(family-name:--font-display)">
+          <h2 className="text-base font-semibold font-display">
             Danh sách thông báo
           </h2>
           <Bell className="w-4 h-4 text-muted-foreground" />
@@ -109,7 +109,7 @@ export default async function NotificationsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold font-(family-name:--font-display)">
+                        <h3 className="text-base font-semibold font-display">
                           {notification.title}
                         </h3>
                         {!notification.isRead && (
@@ -144,7 +144,7 @@ export default async function NotificationsPage() {
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-4 h-4 text-brand" />
-            <h3 className="font-semibold font-(family-name:--font-display)">Đơn vận chuyển</h3>
+            <h3 className="font-semibold font-display">Đơn vận chuyển</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             Cập nhật về trạng thái giao nhận và hành trình đơn hàng.
@@ -153,7 +153,7 @@ export default async function NotificationsPage() {
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <div className="flex items-center gap-2 mb-2">
             <MailOpen className="w-4 h-4 text-brand" />
-            <h3 className="font-semibold font-(family-name:--font-display)">Báo giá</h3>
+            <h3 className="font-semibold font-display">Báo giá</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             Phản hồi từ đội ngũ kinh doanh khi báo giá được tạo hoặc cập nhật.
@@ -162,7 +162,7 @@ export default async function NotificationsPage() {
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <div className="flex items-center gap-2 mb-2">
             <CheckCheck className="w-4 h-4 text-brand" />
-            <h3 className="font-semibold font-(family-name:--font-display)">Hệ thống</h3>
+            <h3 className="font-semibold font-display">Hệ thống</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             Thông báo từ hồ sơ, cài đặt và các tác vụ vận hành nội bộ.
@@ -172,3 +172,4 @@ export default async function NotificationsPage() {
     </div>
   )
 }
+

@@ -102,7 +102,7 @@ export default function Hero() {
             </div>
 
             {/* Heading */}
-            <h1 className="reveal opacity-0 text-4xl sm:text-5xl lg:text-6xl font-extrabold font-(family-name:--font-display) leading-[1.1] tracking-tight">
+            <h1 className="reveal opacity-0 text-4xl sm:text-5xl lg:text-6xl font-extrabold font-display leading-[1.1] tracking-tight">
               Vận chuyển hàng hóa{' '}
               <span className="text-gradient-brand">nhanh chóng</span>
               <br />
@@ -137,7 +137,7 @@ export default function Hero() {
             <div className="reveal opacity-0 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
               {stats.map((stat) => (
                 <div key={stat.label} className="text-center sm:text-left">
-                  <div className="text-2xl font-bold font-(family-name:--font-display) text-gradient-brand">
+                  <div className="text-2xl font-bold font-display text-gradient-brand">
                     {stat.value}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
@@ -217,3 +217,4 @@ export default function Hero() {
     </section>
   )
 }
+

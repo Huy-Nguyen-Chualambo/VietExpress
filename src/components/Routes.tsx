@@ -91,7 +91,7 @@ export default function Routes() {
             <MapPin className="w-4 h-4 text-brand" />
             <span className="text-sm font-medium text-brand">Tuyến đường</span>
           </div>
-          <h2 className="reveal opacity-0 text-3xl sm:text-4xl lg:text-5xl font-bold font-(family-name:--font-display) tracking-tight mb-4">
+          <h2 className="reveal opacity-0 text-3xl sm:text-4xl lg:text-5xl font-bold font-display tracking-tight mb-4">
             Phủ sóng{' '}
             <span className="text-gradient-brand">Bắc — Trung — Nam</span>
           </h2>
@@ -110,13 +110,13 @@ export default function Routes() {
             >
               {/* Region Header */}
               <div
-                className={`bg-gradient-to-r ${region.color} px-6 py-4 flex items-center gap-3`}
+                className={`bg-linear-to-r ${region.color} px-6 py-4 flex items-center gap-3`}
               >
                 <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                   <Truck className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white font-(family-name:--font-display)">
+                  <h3 className="text-lg font-bold text-white font-display">
                     {region.region}
                   </h3>
                   <p className="text-sm text-white/70">{region.routes.length} tuyến phổ biến</p>
@@ -153,3 +153,4 @@ export default function Routes() {
     </section>
   )
 }
+
