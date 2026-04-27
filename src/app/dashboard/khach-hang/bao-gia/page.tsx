@@ -102,15 +102,15 @@ async function createOrderRequest(formData: FormData) {
         orderId: order.id,
         status: 'pending',
         location: parsed.origin,
-        description: parsed.note || 'Don hang da duoc tao va dang cho lay hang.',
+        description: parsed.note || 'Đơn hàng đã được tạo và đang chờ lấy hàng.',
       },
     }),
     prisma.notification.create({
       data: {
         userId: session.user.id,
         type: 'info',
-        title: `Da tao don ${order.orderCode}`,
-        message: `He thong da tiep nhan don tu ${parsed.origin} den ${parsed.destination}.`,
+        title: `Đã tạo đơn ${order.orderCode}`,
+        message: `Hệ thống đã tiếp nhận đơn từ ${parsed.origin} đến ${parsed.destination}.`,
       },
     }),
   ])
@@ -155,21 +155,21 @@ export default async function QuotePage({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
-              Tao don
+              Tạo đơn
             </p>
             <h1 className="text-2xl font-bold font-display">
-              Tao don gui hang ngay
+              Tạo đơn gửi hàng ngay
             </h1>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-              Thay vi gui bao gia, ban co the tao don truc tiep. He thong se tao ma
-              van don, ghi nhan tracking ban dau va dua vao quy trinh lay hang.
+              Thay vì gửi báo giá, bạn có thể tạo đơn trực tiếp. Hệ thống sẽ tạo mã
+              vận đơn, ghi nhận tracking ban đầu và đưa vào quy trình lấy hàng.
             </p>
           </div>
           <Link
             href="/dashboard/khach-hang/don-hang"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted/40 transition-colors"
           >
-            Xem don hang
+            Xem đơn hàng
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -178,7 +178,7 @@ export default async function QuotePage({
       {params?.created === '1' && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-700 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" />
-          Don hang da duoc tao thanh cong.
+          Đơn hàng đã được tạo thành công.
         </div>
       )}
 
@@ -191,10 +191,10 @@ export default async function QuotePage({
               </div>
               <div>
                 <h2 className="text-base font-semibold font-display">
-                  Tao don moi
+                  Tạo đơn mới
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Tao don truc tiep tu du lieu that.
+                  Tạo đơn trực tiếp từ dữ liệu thật.
                 </p>
               </div>
             </div>
@@ -202,13 +202,13 @@ export default async function QuotePage({
             <form action={createOrderRequest} className="space-y-4">
               <input type="hidden" name="executionMode" value="manual" />
               <div>
-                <label className="block text-sm font-medium mb-2">Dich vu</label>
+                <label className="block text-sm font-medium mb-2">Dịch vụ</label>
                 <select
                   name="serviceType"
                   required
                   className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
                 >
-                  <option value="">Chon dich vu</option>
+                  <option value="">Chọn dịch vụ</option>
                   {serviceOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -219,7 +219,7 @@ export default async function QuotePage({
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Diem gui</label>
+                  <label className="block text-sm font-medium mb-2">Điểm gửi</label>
                   <input
                     name="origin"
                     required
@@ -228,7 +228,7 @@ export default async function QuotePage({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Diem nhan</label>
+                  <label className="block text-sm font-medium mb-2">Điểm nhận</label>
                   <input
                     name="destination"
                     required
@@ -240,7 +240,7 @@ export default async function QuotePage({
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Trong luong (kg)</label>
+                  <label className="block text-sm font-medium mb-2">Trọng lượng (kg)</label>
                   <input
                     name="weightKg"
                     inputMode="numeric"
@@ -249,7 +249,7 @@ export default async function QuotePage({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Gia tri don (VND)</label>
+                  <label className="block text-sm font-medium mb-2">Giá trị đơn (VND)</label>
                   <input
                     name="totalAmount"
                     inputMode="numeric"
@@ -260,11 +260,11 @@ export default async function QuotePage({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Ghi chu</label>
+                <label className="block text-sm font-medium mb-2">Ghi chú</label>
                 <textarea
                   name="note"
                   rows={4}
-                  placeholder="Mo ta them ve yeu cau lay hang, giao hang"
+                  placeholder="Mô tả thêm về yêu cầu lấy hàng, giao hàng"
                   className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm resize-none"
                 />
               </div>
@@ -274,7 +274,7 @@ export default async function QuotePage({
                 className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-gradient-brand text-white text-sm font-semibold hover:opacity-95 transition-opacity"
               >
                 <Send className="w-4 h-4" />
-                Tao don ngay
+                Tạo đơn ngay
               </button>
             </form>
           </div>
@@ -286,18 +286,18 @@ export default async function QuotePage({
               </div>
               <div>
                 <h3 className="font-semibold font-display">
-                  Quy trinh sau khi tao don
+                  Quy trình sau khi tạo đơn
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Don duoc dua vao luong lay hang va theo doi tu dong.
+                  Đơn được đưa vào luồng lấy hàng và theo dõi tự động.
                 </p>
               </div>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <div>1. Tao don va sinh ma van don</div>
-              <div>2. He thong tiep nhan va cho lay hang</div>
-              <div>3. Nhan vien cap nhat tracking theo tung moc</div>
-              <div>4. Hoan tat giao hang va doi soat</div>
+              <div>1. Tạo đơn và sinh mã vận đơn</div>
+              <div>2. Hệ thống tiếp nhận và chờ lấy hàng</div>
+              <div>3. Nhân viên cập nhật tracking theo từng mốc</div>
+              <div>4. Hoàn tất giao hàng và đối soát</div>
             </div>
           </div>
         </div>
@@ -305,17 +305,17 @@ export default async function QuotePage({
         <div className="lg:col-span-3 bg-white rounded-2xl border border-border/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-base font-semibold font-display">
-              Don tao gan day
+              Đơn tạo gần đây
             </h2>
-            <span className="text-sm text-muted-foreground">{orders.length} don</span>
+            <span className="text-sm text-muted-foreground">{orders.length} đơn</span>
           </div>
 
           {orders.length === 0 ? (
             <div className="p-10 text-center">
               <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Chua co don nao</h3>
+              <h3 className="text-lg font-semibold mb-2">Chưa có đơn nào</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Hay tao don dau tien de bat dau quy trinh lay hang va giao hang.
+                Hãy tạo đơn đầu tiên để bắt đầu quy trình lấy hàng và giao hàng.
               </p>
             </div>
           ) : (
@@ -337,33 +337,33 @@ export default async function QuotePage({
                         {order.origin} → {order.destination}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Dich vu: <span className="text-foreground font-medium">{order.serviceType}</span>
+                        Dịch vụ: <span className="text-foreground font-medium">{order.serviceType}</span>
                       </div>
                     </div>
                     <div className="rounded-xl bg-muted/30 p-4 text-sm min-w-52">
-                      <div className="text-muted-foreground mb-1">Gia tri don</div>
+                      <div className="text-muted-foreground mb-1">Giá trị đơn</div>
                       <div className="text-xl font-bold font-display">
                         {formatCurrencyVnd(order.totalAmount)}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Tao ngay {formatDateOnly(order.createdAt)}
+                        Tạo ngày {formatDateOnly(order.createdAt)}
                       </div>
                     </div>
                   </div>
 
                   <div className="grid sm:grid-cols-3 gap-3 text-sm">
                     <div className="rounded-xl border border-border p-4">
-                      <div className="text-xs text-muted-foreground mb-1">Trong luong</div>
+                      <div className="text-xs text-muted-foreground mb-1">Trọng lượng</div>
                       <div className="font-medium">
-                        {order.weightKg ? `${order.weightKg.toLocaleString('vi-VN')} kg` : 'Chua khai bao'}
+                        {order.weightKg ? `${order.weightKg.toLocaleString('vi-VN')} kg` : 'Chưa khai báo'}
                       </div>
                     </div>
                     <div className="rounded-xl border border-border p-4">
-                      <div className="text-xs text-muted-foreground mb-1">Du kien giao</div>
+                      <div className="text-xs text-muted-foreground mb-1">Dự kiến giao</div>
                       <div className="font-medium">{formatDateOnly(order.estimatedDelivery)}</div>
                     </div>
                     <div className="rounded-xl border border-border p-4">
-                      <div className="text-xs text-muted-foreground mb-1">Cap nhat</div>
+                      <div className="text-xs text-muted-foreground mb-1">Cập nhật</div>
                       <div className="font-medium">{formatDateOnly(order.updatedAt)}</div>
                     </div>
                   </div>
@@ -373,7 +373,7 @@ export default async function QuotePage({
                     className="inline-flex items-center gap-2 text-sm font-medium text-brand hover:underline"
                   >
                     <Clock className="w-4 h-4" />
-                    Mo trang theo doi
+                    Mở trang theo dõi
                   </Link>
                 </article>
               ))}

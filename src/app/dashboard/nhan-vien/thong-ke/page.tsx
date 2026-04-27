@@ -64,31 +64,31 @@ export default async function EmployeeStatsPage() {
   return (
     <div className="space-y-6">
       <section className="bg-white rounded-2xl border border-border/50 p-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Thong ke</p>
-        <h1 className="text-2xl font-bold font-display">Bao cao tong hop van hanh</h1>
-        <p className="text-sm text-muted-foreground mt-2">So lieu tong hop tu don hang, bao gia va thong tin nguoi dung.</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Thống kê</p>
+        <h1 className="text-2xl font-bold font-display">Báo cáo tổng hợp vận hành</h1>
+        <p className="text-sm text-muted-foreground mt-2">Số liệu tổng hợp từ đơn hàng, báo giá và thông tin người dùng.</p>
       </section>
 
       <section className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <Package className="w-5 h-5 text-brand mb-3" />
           <div className="text-2xl font-bold font-display">{totalOrders.toLocaleString('vi-VN')}</div>
-          <div className="text-sm text-muted-foreground">Tong don hang</div>
+          <div className="text-sm text-muted-foreground">Tổng đơn hàng</div>
         </div>
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <TrendingUp className="w-5 h-5 text-green-600 mb-3" />
           <div className="text-2xl font-bold font-display">{completionRate}%</div>
-          <div className="text-sm text-muted-foreground">Ty le hoan thanh</div>
+          <div className="text-sm text-muted-foreground">Tỷ lệ hoàn thành</div>
         </div>
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <BarChart3 className="w-5 h-5 text-amber-600 mb-3" />
           <div className="text-2xl font-bold font-display">{pendingQuotes.toLocaleString('vi-VN')}</div>
-          <div className="text-sm text-muted-foreground">Bao gia dang cho</div>
+          <div className="text-sm text-muted-foreground">Báo giá đang chờ</div>
         </div>
         <div className="bg-white rounded-xl border border-border/50 p-5">
           <Users className="w-5 h-5 text-blue-600 mb-3" />
           <div className="text-2xl font-bold font-display">{totalCustomers.toLocaleString('vi-VN')}</div>
-          <div className="text-sm text-muted-foreground">Khach hang dang hoat dong</div>
+          <div className="text-sm text-muted-foreground">Khách hàng đang hoạt động</div>
         </div>
       </section>
 
@@ -96,18 +96,18 @@ export default async function EmployeeStatsPage() {
         <div className="bg-white rounded-xl border border-border/50 p-6 space-y-2">
           <h2 className="text-base font-semibold font-display">Doanh thu</h2>
           <div className="text-2xl font-bold font-display">{formatCurrencyVnd(revenueSummary._sum.totalAmount ?? 0)}</div>
-          <div className="text-sm text-muted-foreground">Tong doanh thu tu don hoan thanh</div>
+          <div className="text-sm text-muted-foreground">Tổng doanh thu từ đơn hoàn thành</div>
         </div>
         <div className="bg-white rounded-xl border border-border/50 p-6 space-y-2">
-          <h2 className="text-base font-semibold font-display">Gia tri don trung binh</h2>
+          <h2 className="text-base font-semibold font-display">Giá trị đơn trung bình</h2>
           <div className="text-2xl font-bold font-display">{formatCurrencyVnd(Math.round(revenueSummary._avg.totalAmount ?? 0))}</div>
-          <div className="text-sm text-muted-foreground">Tinh theo cac don da co gia tri</div>
+          <div className="text-sm text-muted-foreground">Tính theo các đơn đã có giá trị</div>
         </div>
         <div className="bg-white rounded-xl border border-border/50 p-6 space-y-2">
-          <h2 className="text-base font-semibold font-display">Nhan su va rui ro</h2>
-          <div className="text-sm text-muted-foreground">Nhan vien: {totalEmployees}</div>
-          <div className="text-sm text-muted-foreground">Don bi huy: {cancelledOrders}</div>
-          <div className="text-sm text-muted-foreground">Don hoan thanh: {completedOrders}</div>
+          <h2 className="text-base font-semibold font-display">Nhân sự và rủi ro</h2>
+          <div className="text-sm text-muted-foreground">Nhân viên: {totalEmployees}</div>
+          <div className="text-sm text-muted-foreground">Đơn bị hủy: {cancelledOrders}</div>
+          <div className="text-sm text-muted-foreground">Đơn hoàn thành: {completedOrders}</div>
         </div>
       </section>
 

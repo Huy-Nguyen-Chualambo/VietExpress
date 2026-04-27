@@ -6,12 +6,12 @@ import { requireEmployeeSession } from '@/lib/employee-portal'
 import { safeCreateActionLog } from '@/lib/action-log'
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
-  pending: 'Cho xu ly',
-  picked_up: 'Da lay hang',
-  in_transit: 'Dang van chuyen',
-  delivering: 'Dang giao',
-  completed: 'Hoan thanh',
-  cancelled: 'Da huy',
+  pending: 'Chờ xử lý',
+  picked_up: 'Đã lấy hàng',
+  in_transit: 'Đang vận chuyển',
+  delivering: 'Đang giao',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
 }
 
 const ALLOWED_ORDER_STATUSES = new Set(Object.keys(ORDER_STATUS_LABELS))
@@ -88,8 +88,8 @@ export async function approveQuoteAction(formData: FormData) {
       data: {
         userId: quote.userId,
         type: 'info',
-        title: 'Da co bao gia moi',
-        message: `Yeu cau ${quote.quoteCode} da duoc bao gia: ${quotedPrice.toLocaleString('vi-VN')} VND`,
+        title: 'Đã có báo giá mới',
+        message: `Yêu cầu ${quote.quoteCode} đã được báo giá: ${quotedPrice.toLocaleString('vi-VN')} VND`,
       },
     }),
   ])
@@ -104,7 +104,7 @@ export async function rejectQuoteAction(formData: FormData) {
   await requireEmployeeSession()
 
   const quoteId = parseRequiredText(formData.get('quoteId'))
-  const reason = parseRequiredText(formData.get('reason')) ?? 'Yeu cau chua du dieu kien de bao gia.'
+  const reason = parseRequiredText(formData.get('reason')) ?? 'Yêu cầu chưa đủ điều kiện để báo giá.'
 
   if (!quoteId) {
     return
@@ -135,7 +135,7 @@ export async function rejectQuoteAction(formData: FormData) {
       data: {
         userId: quote.userId,
         type: 'warning',
-        title: 'Yeu cau bao gia da bi tu choi',
+        title: 'Yêu cầu báo giá đã bị từ chối',
         message: `${quote.quoteCode}: ${reason}`,
       },
     }),
@@ -174,7 +174,7 @@ export async function confirmPickupAction(formData: FormData) {
     return
   }
 
-  const pickupDescription = `Hang da duoc lay tu ${location}${notes ? '. ' + notes : ''}`
+  const pickupDescription = `Hàng đã được lấy từ ${location}${notes ? '. ' + notes : ''}`
 
   await prisma.$transaction([
     prisma.order.update({
@@ -197,8 +197,8 @@ export async function confirmPickupAction(formData: FormData) {
       data: {
         userId: order.userId,
         type: 'info',
-        title: `Don hang ${order.orderCode} da duoc lay`,
-        message: `Hang da duoc lay tai ${location}. Theo doi van don tren ung dung.`,
+        title: `Đơn hàng ${order.orderCode} đã được lấy`,
+        message: `Hàng đã được lấy tại ${location}. Theo dõi vận đơn trên ứng dụng.`,
       },
     }),
   ])
@@ -230,11 +230,11 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   const orderId = parseRequiredText(formData.get('orderId'))
   const status = parseRequiredText(formData.get('status'))
-  const location = parseRequiredText(formData.get('location')) ?? 'Dang cap nhat'
+  const location = parseRequiredText(formData.get('location')) ?? 'Đang cập nhật'
   const executionMode = parseExecutionMode(formData.get('executionMode'))
   const description =
     parseRequiredText(formData.get('description')) ??
-    `Trang thai van don duoc cap nhat: ${ORDER_STATUS_LABELS[status ?? ''] ?? status ?? 'Khac'}`
+    `Trạng thái vận đơn được cập nhật: ${ORDER_STATUS_LABELS[status ?? ''] ?? status ?? 'Khác'}`
 
   if (!orderId || !status || !ALLOWED_ORDER_STATUSES.has(status)) {
     return
@@ -280,8 +280,8 @@ export async function updateOrderStatusAction(formData: FormData) {
       data: {
         userId: order.userId,
         type: status === 'completed' ? 'success' : status === 'cancelled' ? 'warning' : 'info',
-        title: `Cap nhat don hang ${order.orderCode}`,
-        message: `Trang thai moi: ${ORDER_STATUS_LABELS[status]}. Vi tri: ${location}.`,
+        title: `Cập nhật đơn hàng ${order.orderCode}`,
+        message: `Trạng thái mới: ${ORDER_STATUS_LABELS[status]}. Vị trí: ${location}.`,
       },
     }),
   ])
