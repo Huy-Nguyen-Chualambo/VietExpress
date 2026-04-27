@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 
+const QUOTE_AUTOMATION_WEBHOOK_URL =
+  process.env.QUOTE_AUTOMATION_WEBHOOK_URL ||
+  'https://3e73-171-225-15-13.ngrok-free.app/webhook-test/quote-request'
+
 const quoteRequestSchema = z.object({
   name: z.string().trim().min(2).max(255),
   phone: z.string().trim().min(5).max(50),
@@ -27,6 +31,53 @@ function makeQuoteCode() {
 
 function makeGuestEmail(quoteCode: string) {
   return `${quoteCode.toLowerCase()}@guest.vietexpress.local`
+}
+
+type QuoteWebhookPayload = {
+  quoteId: string
+  quoteCode: string
+  createdAt: string
+  customer: {
+    fullName: string
+    phone: string
+    email: string | null
+    company: string | null
+  }
+  request: {
+    serviceType: string
+    origin: string
+    destination: string
+    weight: string | null
+    dimensions: string | null
+    note: string | null
+  }
+}
+
+async function notifyQuoteAutomationWebhook(payload: QuoteWebhookPayload) {
+  if (!QUOTE_AUTOMATION_WEBHOOK_URL) return
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+
+  try {
+    const response = await fetch(QUOTE_AUTOMATION_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      console.error('Quote automation webhook returned non-2xx status:', response.status)
+    }
+  } catch (error) {
+    console.error('Quote automation webhook error:', error)
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export async function POST(request: Request) {
@@ -112,6 +163,26 @@ export async function POST(request: Request) {
           note: input.note?.trim() || null,
         },
       })
+    })
+
+    await notifyQuoteAutomationWebhook({
+      quoteId: quote.id,
+      quoteCode: quote.quoteCode,
+      createdAt: quote.createdAt.toISOString(),
+      customer: {
+        fullName: input.name,
+        phone: input.phone,
+        email,
+        company,
+      },
+      request: {
+        serviceType: input.service,
+        origin: input.from,
+        destination: input.to,
+        weight: input.weight?.trim() || null,
+        dimensions: input.dimensions?.trim() || null,
+        note: input.note?.trim() || null,
+      },
     })
 
     revalidatePath('/dashboard/nhan-vien')
