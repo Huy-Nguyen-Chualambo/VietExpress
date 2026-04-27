@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-export const runtime = 'edge'
-
 export async function proxy(request: NextRequest) {
   const token = await getToken({
     req: request,
