@@ -155,6 +155,9 @@ export async function POST(request: Request) {
         data: {
           userId: user.id,
           quoteCode,
+          customerName: input.name,
+          customerPhone: input.phone,
+          customerEmail: email,
           serviceType: input.service,
           origin: input.from,
           destination: input.to,
