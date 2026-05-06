@@ -71,6 +71,20 @@ export default async function EmployeeQuotesPage() {
         ) : (
           <div className="divide-y divide-border">
             {quoteRequests.map((quote) => (
+              (() => {
+                const quoteWithPricing = quote as typeof quote & {
+                  priceBase?: number | null
+                  suggestedSurcharges?: Array<{
+                    type?: string
+                    description?: string
+                    amount_vnd?: number
+                    percentage?: number
+                  }> | null
+                  finalSuggestedPrice?: number | null
+                  pricingReasoning?: string | null
+                }
+
+                return (
               <article key={quote.id} className="p-6 space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -85,7 +99,7 @@ export default async function EmployeeQuotesPage() {
                     </div>
                   </div>
                   <div className="text-right text-xs text-muted-foreground">
-                    <div>{formatCurrencyVnd(quote.quotedPrice)}</div>
+                    <div>{formatCurrencyVnd(quoteWithPricing.priceBase ?? quote.quotedPrice)}</div>
                     <div>{formatDateOnly(quote.createdAt)}</div>
                   </div>
                 </div>
@@ -132,22 +146,24 @@ export default async function EmployeeQuotesPage() {
                   </div>
                 ) : null}
 
-                {quote.suggestedSurcharges || quote.finalSuggestedPrice ? (
+                {quoteWithPricing.suggestedSurcharges || quoteWithPricing.finalSuggestedPrice ? (
                   <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 space-y-3">
                     <div className="text-sm font-semibold text-blue-900">💡 Đề xuất của hệ thống</div>
                     
-                    {Array.isArray(quote.suggestedSurcharges) && quote.suggestedSurcharges.length > 0 ? (
+                    {Array.isArray(quoteWithPricing.suggestedSurcharges) && quoteWithPricing.suggestedSurcharges.length > 0 ? (
                       <div className="space-y-2">
                         <div className="text-xs font-semibold text-blue-800">Phụ phí đề xuất:</div>
                         <div className="space-y-1">
-                          {quote.suggestedSurcharges.map((surcharge: any, idx: number) => (
+                          {quoteWithPricing.suggestedSurcharges.map((surcharge, idx: number) => (
                             <div key={idx} className="text-xs text-blue-700 flex justify-between">
                               <span>{surcharge.description}</span>
                               <span className="font-semibold">
-                                {surcharge.amount_vnd 
-                                  ? `+${formatCurrencyVnd(surcharge.amount_vnd)}`
-                                  : `${surcharge.percentage > 1 ? surcharge.percentage : (surcharge.percentage * 100).toFixed(0)}%`
-                                }
+                                {(() => {
+                                  const percentage = surcharge.percentage ?? 0
+                                  return surcharge.amount_vnd
+                                    ? `+${formatCurrencyVnd(surcharge.amount_vnd)}`
+                                    : `${percentage > 1 ? percentage : (percentage * 100).toFixed(0)}%`
+                                })()}
                               </span>
                             </div>
                           ))}
@@ -155,24 +171,24 @@ export default async function EmployeeQuotesPage() {
                       </div>
                     ) : null}
 
-                    {quote.quotedPrice || quote.finalSuggestedPrice ? (
+                    {quote.quotedPrice || quoteWithPricing.finalSuggestedPrice ? (
                       <div className="border-t border-blue-200 pt-2 space-y-1">
                         <div className="text-xs text-blue-800 flex justify-between">
                           <span>Giá gốc:</span>
-                          <span className="font-semibold">{formatCurrencyVnd(quote.quotedPrice)}</span>
+                          <span className="font-semibold">{formatCurrencyVnd(quoteWithPricing.priceBase ?? quote.quotedPrice)}</span>
                         </div>
-                        {quote.finalSuggestedPrice ? (
+                        {quoteWithPricing.finalSuggestedPrice ? (
                           <div className="text-xs text-blue-800 flex justify-between">
                             <span>Giá đề xuất:</span>
-                            <span className="font-bold text-blue-900">{formatCurrencyVnd(quote.finalSuggestedPrice)}</span>
+                            <span className="font-bold text-blue-900">{formatCurrencyVnd(quoteWithPricing.finalSuggestedPrice)}</span>
                           </div>
                         ) : null}
                       </div>
                     ) : null}
 
-                    {quote.pricingReasoning ? (
+                    {quoteWithPricing.pricingReasoning ? (
                       <div className="text-xs text-blue-700 italic border-t border-blue-200 pt-2">
-                        <span className="font-semibold">Lý do:</span> {quote.pricingReasoning}
+                        <span className="font-semibold">Lý do:</span> {quoteWithPricing.pricingReasoning}
                       </div>
                     ) : null}
                   </div>
@@ -217,6 +233,8 @@ export default async function EmployeeQuotesPage() {
                   </div>
                 ) : null}
               </article>
+                )
+              })()
             ))}
           </div>
         )}
