@@ -146,7 +146,7 @@ export default async function EmployeeQuotesPage() {
                               <span className="font-semibold">
                                 {surcharge.amount_vnd 
                                   ? `+${formatCurrencyVnd(surcharge.amount_vnd)}`
-                                  : `${(surcharge.percentage * 100).toFixed(0)}%`
+                                  : `${surcharge.percentage > 1 ? surcharge.percentage : (surcharge.percentage * 100).toFixed(0)}%`
                                 }
                               </span>
                             </div>
