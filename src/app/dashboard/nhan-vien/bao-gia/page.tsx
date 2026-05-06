@@ -155,12 +155,18 @@ export default async function EmployeeQuotesPage() {
                       </div>
                     ) : null}
 
-                    {quote.finalSuggestedPrice ? (
-                      <div className="border-t border-blue-200 pt-2">
+                    {quote.quotedPrice || quote.finalSuggestedPrice ? (
+                      <div className="border-t border-blue-200 pt-2 space-y-1">
                         <div className="text-xs text-blue-800 flex justify-between">
-                          <span>Giá đề xuất:</span>
-                          <span className="font-bold text-blue-900">{formatCurrencyVnd(quote.finalSuggestedPrice)}</span>
+                          <span>Giá gốc:</span>
+                          <span className="font-semibold">{formatCurrencyVnd(quote.quotedPrice)}</span>
                         </div>
+                        {quote.finalSuggestedPrice ? (
+                          <div className="text-xs text-blue-800 flex justify-between">
+                            <span>Giá đề xuất:</span>
+                            <span className="font-bold text-blue-900">{formatCurrencyVnd(quote.finalSuggestedPrice)}</span>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
 

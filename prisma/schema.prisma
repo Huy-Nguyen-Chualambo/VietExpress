@@ -116,6 +116,7 @@ model QuoteRequest {
   note                   String?  @db.Text
   status                 String   @default("pending") @db.VarChar(30)
   quotedPrice            Int?     @map("quoted_price")
+  priceBase              Int?     @map("Price_Base")
   suggestedSurcharges    Json?    @map("suggested_surcharges")
   finalSuggestedPrice    Int?     @map("final_suggested_price")
   pricingReasoning       String?  @map("pricing_reasoning") @db.Text
