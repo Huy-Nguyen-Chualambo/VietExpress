@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { requireEmployeeSession } from '@/lib/employee-portal'
 import { safeCreateActionLog } from '@/lib/action-log'
+import { notifyQuoteApprovalWebhook } from '@/app/api/quote-approvals/route'
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: 'Chờ xử lý',
@@ -69,6 +70,29 @@ export async function approveQuoteAction(formData: FormData) {
       userId: true,
       quoteCode: true,
       status: true,
+      customerName: true,
+      customerPhone: true,
+      customerEmail: true,
+      serviceType: true,
+      origin: true,
+      destination: true,
+      weight: true,
+      dimensions: true,
+      note: true,
+      user: {
+        select: {
+          name: true,
+          email: true,
+          profile: {
+            select: {
+              fullName: true,
+              phone: true,
+              company: true,
+              email: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -93,6 +117,36 @@ export async function approveQuoteAction(formData: FormData) {
       },
     }),
   ])
+
+  const customerProfile = quote.user.profile
+  const fullName = quote.customerName || customerProfile?.fullName || quote.user.name || 'Khách hàng'
+  const phone = quote.customerPhone || customerProfile?.phone || null
+  const email = quote.customerEmail || customerProfile?.email || quote.user.email || null
+  const company = customerProfile?.company || null
+  const message = `Yêu cầu ${quote.quoteCode} đã được báo giá ${quotedPrice.toLocaleString('vi-VN')} VND.`
+
+  void notifyQuoteApprovalWebhook({
+    quoteId: quote.id,
+    quoteCode: quote.quoteCode,
+    status: 'quoted',
+    quotedPrice,
+    approvedAt: new Date().toISOString(),
+    customer: {
+      fullName,
+      phone,
+      email,
+      company,
+    },
+    quote: {
+      serviceType: quote.serviceType,
+      origin: quote.origin,
+      destination: quote.destination,
+      weight: quote.weight,
+      dimensions: quote.dimensions,
+      note: quote.note,
+    },
+    message,
+  })
 
   revalidatePath('/dashboard/nhan-vien/bao-gia')
   revalidatePath('/dashboard/nhan-vien')
