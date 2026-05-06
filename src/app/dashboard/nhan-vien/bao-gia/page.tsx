@@ -132,6 +132,46 @@ export default async function EmployeeQuotesPage() {
                   </div>
                 ) : null}
 
+                {quote.suggestedSurcharges || quote.finalSuggestedPrice ? (
+                  <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 space-y-3">
+                    <div className="text-sm font-semibold text-blue-900">💡 Đề xuất của hệ thống</div>
+                    
+                    {Array.isArray(quote.suggestedSurcharges) && quote.suggestedSurcharges.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-blue-800">Phụ phí đề xuất:</div>
+                        <div className="space-y-1">
+                          {quote.suggestedSurcharges.map((surcharge: any, idx: number) => (
+                            <div key={idx} className="text-xs text-blue-700 flex justify-between">
+                              <span>{surcharge.description}</span>
+                              <span className="font-semibold">
+                                {surcharge.amount_vnd 
+                                  ? `+${formatCurrencyVnd(surcharge.amount_vnd)}`
+                                  : `${(surcharge.percentage * 100).toFixed(0)}%`
+                                }
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {quote.finalSuggestedPrice ? (
+                      <div className="border-t border-blue-200 pt-2">
+                        <div className="text-xs text-blue-800 flex justify-between">
+                          <span>Giá đề xuất:</span>
+                          <span className="font-bold text-blue-900">{formatCurrencyVnd(quote.finalSuggestedPrice)}</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {quote.pricingReasoning ? (
+                      <div className="text-xs text-blue-700 italic border-t border-blue-200 pt-2">
+                        <span className="font-semibold">Lý do:</span> {quote.pricingReasoning}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {quote.status === 'pending' ? (
                   <div className="pt-2 border-t border-border/70 grid gap-3 lg:grid-cols-2">
                     <form action={approveQuoteAction} className="flex flex-col sm:flex-row gap-2 sm:items-center">

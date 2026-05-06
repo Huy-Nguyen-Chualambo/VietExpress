@@ -102,23 +102,26 @@ model Order {
 }
 
 model QuoteRequest {
-  id            String   @id @default(cuid())
-  userId        String   @db.Uuid @map("user_id")
-  quoteCode     String   @unique @map("quote_code") @db.VarChar(50)
-  customerName  String?  @map("customer_name") @db.VarChar(255)
-  customerPhone String?  @map("customer_phone") @db.VarChar(50)
-  customerEmail String?  @map("customer_email") @db.VarChar(255)
-  serviceType   String   @map("service_type") @db.VarChar(50)
-  origin        String   @db.VarChar(255)
-  destination   String   @db.VarChar(255)
-  weight        String?  @db.VarChar(50)
-  dimensions    String?  @db.VarChar(100)
-  note          String?  @db.Text
-  status        String   @default("pending") @db.VarChar(30)
-  quotedPrice   Int?     @map("quoted_price")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String   @id @default(cuid())
+  userId                 String   @db.Uuid @map("user_id")
+  quoteCode              String   @unique @map("quote_code") @db.VarChar(50)
+  customerName           String?  @map("customer_name") @db.VarChar(255)
+  customerPhone          String?  @map("customer_phone") @db.VarChar(50)
+  customerEmail          String?  @map("customer_email") @db.VarChar(255)
+  serviceType            String   @map("service_type") @db.VarChar(50)
+  origin                 String   @db.VarChar(255)
+  destination            String   @db.VarChar(255)
+  weight                 String?  @db.VarChar(50)
+  dimensions             String?  @db.VarChar(100)
+  note                   String?  @db.Text
+  status                 String   @default("pending") @db.VarChar(30)
+  quotedPrice            Int?     @map("quoted_price")
+  suggestedSurcharges    Json?    @map("suggested_surcharges")
+  finalSuggestedPrice    Int?     @map("final_suggested_price")
+  pricingReasoning       String?  @map("pricing_reasoning") @db.Text
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@map("quote_requests")
