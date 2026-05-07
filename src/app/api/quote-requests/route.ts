@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 const QUOTE_AUTOMATION_WEBHOOK_URL =
   process.env.QUOTE_AUTOMATION_WEBHOOK_URL ||
-  'https://844f-42-116-206-217.ngrok-free.app/webhook-test/quote-request'
+  'https://844f-42-116-206-217.ngrok-free.app/webhook/quote-request'
 
 const quoteRequestSchema = z.object({
   name: z.string().trim().min(2).max(255),
