@@ -28,9 +28,20 @@ $$
 
 ### 2.2 Phân vùng tuyến cơ bản
 
-- Nội tỉnh: cùng thành phố/tỉnh.  
-- Nội miền: cùng miền (Bắc-Bắc, Trung-Trung, Nam-Nam).  
-- Liên miền: Bắc-Trung, Trung-Nam, Bắc-Nam.  
+#### Định nghĩa các vùng (theo sơ đồ vùng 1/2/3 trong ảnh)
+
+- **Vùng 3:** Bao gồm các tỉnh, thành phố từ Hà Tĩnh trở ra các tỉnh miền Bắc (quy ước là vùng Bắc trong sơ đồ).  
+- **Vùng 2:** Bao gồm các tỉnh, thành phố từ Quảng Ngãi (mới) trở ra tới Quảng Trị (mới) — phần lớn thuộc miền Trung.  
+- **Vùng 1:** Bao gồm các tỉnh, thành phố từ Gia Lai (mới) trở vào các tỉnh miền Nam (phần phía Nam của sơ đồ).
+
+#### Định nghĩa các tuyến (mô tả và ví dụ)
+
+- **Nội tỉnh:** Lộ trình giao - nhận hàng hóa chỉ trong cùng một tỉnh/thành phố và nằm trong cùng một miền gửi hàng (ví dụ: Hà Nội (miền Bắc) <=> Hà Nội (miền Bắc); TP.HCM (miền Nam) <=> TP.HCM (miền Nam)).  
+- **Nội vùng:** Lộ trình giao - nhận hàng hóa giữa 2 tỉnh/thành phố chỉ nằm trong cùng một vùng gửi (ví dụ: Quảng Ngãi (miền Trung) <=> Đà Nẵng (miền Trung); Hà Nội (miền Bắc) <=> Tuyên Quang (miền Bắc)).  
+- **Liên vùng:** Lộ trình giao - nhận hàng hóa giữa 2 tỉnh/thành phố thuộc 2 vùng liền kề (bao gồm: miền Nam ↔ miền Trung; miền Bắc ↔ miền Trung). Ví dụ: TP.HCM (miền Nam) <=> Khánh Hòa (miền Trung); Hà Nội (miền Bắc) <=> Quảng Ngãi (miền Trung).  
+- **Liên tỉnh:** Lộ trình giao - nhận hàng hóa giữa 2 tỉnh/thành phố thuộc 2 miền không liền kề (miền Bắc ↔ miền Nam). Ví dụ: Hà Nội (miền Bắc) <=> Tây Ninh (miền Nam); TP.HCM (miền Nam) <=> Lạng Sơn (miền Bắc).
+
+> Ghi chú: Khi tính giá tham chiếu, hệ thống sẽ dùng các quy ước vùng phía trên (Vùng 1/2/3) và quy tắc so sánh tỉnh/thành để phân loại tuyến thành `Nội tỉnh`, `Nội vùng`, `Liên vùng` hoặc `Liên tỉnh` theo ví dụ mẫu.
 
 ## 3. Bảng giá theo nhóm dịch vụ (mapping với serviceType trong dự án)
 

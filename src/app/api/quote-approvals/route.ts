@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 const QUOTE_APPROVAL_WEBHOOK_URL =
   process.env.QUOTE_APPROVAL_WEBHOOK_URL ||
-  'https://844f-42-116-206-217.ngrok-free.app/webhook-test/quote-approval'
+  'https://brute-qualm-marina.ngrok-free.dev/webhook-test/quote-approval'
 
 const quoteApprovalSchema = z.object({
   quoteId: z.string().trim().min(1),
