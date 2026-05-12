@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { safeCreateActionLog } from '@/lib/action-log'
+import { getEstimatedDelivery } from '@/lib/sla'
 import {
   formatCurrencyVnd,
   formatDateOnly,
@@ -92,7 +93,7 @@ async function createOrderRequest(formData: FormData) {
       currentLocation: parsed.origin,
       weightKg: parsePositiveInteger(parsed.weightKg),
       totalAmount: parsePositiveInteger(parsed.totalAmount),
-      estimatedDelivery: new Date(Date.now() + 1000 * 60 * 60 * 48),
+      estimatedDelivery: getEstimatedDelivery(parsed.serviceType, parsed.origin, parsed.destination),
     },
   })
 

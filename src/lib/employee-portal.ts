@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSlaDeadline } from '@/lib/sla'
 
 const ACTIVE_ORDER_STATUSES = ['pending', 'picked_up', 'in_transit', 'delivering']
 
@@ -11,6 +12,8 @@ export type EmployeeOverviewOrder = {
   origin: string
   destination: string
   status: string
+  serviceType: string
+  createdAt: Date
   totalAmount: number | null
   estimatedDelivery: Date | null
   currentLocation: string | null
@@ -116,7 +119,8 @@ export async function requireEmployeeSession() {
 }
 
 export async function getEmployeeOverview(): Promise<EmployeeOverview> {
-  const riskWindowEnd = new Date(Date.now() + 3 * 60 * 60 * 1000)
+  const now = new Date()
+  const activeOrderStatuses = ACTIVE_ORDER_STATUSES
 
   const [
     totalOrders,
@@ -130,8 +134,7 @@ export async function getEmployeeOverview(): Promise<EmployeeOverview> {
     recentOrders,
     pendingQuoteRequests,
     recentNotifications,
-    slaBreaches,
-    slaRiskOrders,
+    activeSlaOrders,
     topRoutes,
   ] = await Promise.all([
     prisma.order.count(),
@@ -186,32 +189,9 @@ export async function getEmployeeOverview(): Promise<EmployeeOverview> {
       },
     }),
     prisma.order.findMany({
-      where: {
-        status: { in: ACTIVE_ORDER_STATUSES },
-        estimatedDelivery: { lt: new Date() },
-      },
+      where: { status: { in: activeOrderStatuses } },
       orderBy: { estimatedDelivery: 'asc' },
-      take: 5,
-      include: {
-        user: {
-          include: { profile: true },
-        },
-        trackingEvents: {
-          orderBy: { eventTime: 'desc' },
-          take: 1,
-        },
-      },
-    }),
-    prisma.order.findMany({
-      where: {
-        status: { in: ACTIVE_ORDER_STATUSES },
-        estimatedDelivery: {
-          gte: new Date(),
-          lte: riskWindowEnd,
-        },
-      },
-      orderBy: { estimatedDelivery: 'asc' },
-      take: 5,
+      take: 50,
       include: {
         user: {
           include: { profile: true },
@@ -235,6 +215,20 @@ export async function getEmployeeOverview(): Promise<EmployeeOverview> {
       take: 5,
     }),
   ])
+
+  const slaBreaches = activeSlaOrders
+    .filter((order) => {
+      const plan = getSlaDeadline(order.serviceType, order.origin, order.destination, order.createdAt, order.estimatedDelivery)
+      return now > plan.deadline
+    })
+    .slice(0, 5)
+
+  const slaRiskOrders = activeSlaOrders
+    .filter((order) => {
+      const plan = getSlaDeadline(order.serviceType, order.origin, order.destination, order.createdAt, order.estimatedDelivery)
+      return now >= plan.standardDelivery && now <= plan.deadline
+    })
+    .slice(0, 5)
 
   return {
     stats: {

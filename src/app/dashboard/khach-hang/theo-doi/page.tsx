@@ -8,6 +8,7 @@ import {
   orderStatusClass,
   orderStatusLabel,
 } from '@/lib/customer-portal'
+import { getSlaDeadline } from '@/lib/sla'
 import {
   ArrowRight,
   CheckCircle2,
@@ -46,6 +47,15 @@ export default async function TrackingPage({
 
   const params = searchParams ? await searchParams : undefined
   const { orders, selectedOrder } = await getCustomerTracking(session.user.id, params?.order)
+  const slaPlan = selectedOrder
+    ? getSlaDeadline(
+        selectedOrder.serviceType,
+        selectedOrder.origin,
+        selectedOrder.destination,
+        selectedOrder.createdAt,
+        selectedOrder.estimatedDelivery ?? undefined,
+      )
+    : null
 
   return (
     <div className="space-y-8">
@@ -149,6 +159,23 @@ export default async function TrackingPage({
                     <div className="font-semibold">{selectedOrder.estimatedDelivery ? formatDateTime(selectedOrder.estimatedDelivery) : 'Chưa xác định'}</div>
                   </div>
                 </div>
+
+                {slaPlan ? (
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="rounded-xl border border-brand/15 bg-brand-soft/30 p-4">
+                      <div className="text-xs text-muted-foreground mb-1">ETA chuẩn</div>
+                      <div className="font-semibold">{formatDateTime(slaPlan.standardDelivery)}</div>
+                    </div>
+                    <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                      <div className="text-xs text-muted-foreground mb-1">Thời gian toàn trình tối đa</div>
+                      <div className="font-semibold">{formatDateTime(slaPlan.maxDelivery)}</div>
+                    </div>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
+                      <div className="text-xs text-muted-foreground mb-1">Deadline SLA</div>
+                      <div className="font-semibold text-amber-900">{formatDateTime(slaPlan.deadline)}</div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div>
                   <div className="flex items-center justify-between text-sm mb-2">

@@ -214,7 +214,7 @@ export default async function EmployeeDashboardPage() {
                                 <div className="text-sm font-semibold">{order.orderCode}</div>
                                 <div className="text-xs text-muted-foreground">{order.origin} - {order.destination}</div>
                               </div>
-                              <span className="text-[11px] font-semibold uppercase tracking-wide text-red-700">high</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-red-700">trễ</span>
                             </div>
                             <div className="text-xs text-red-700 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
@@ -254,7 +254,7 @@ export default async function EmployeeDashboardPage() {
                                 <div className="text-sm font-semibold">{order.orderCode}</div>
                                 <div className="text-xs text-muted-foreground">{order.origin} - {order.destination}</div>
                               </div>
-                              <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">medium</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Nguy cơ</span>
                             </div>
                             <div className="text-xs text-blue-700 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
