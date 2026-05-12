@@ -5,6 +5,82 @@ import { prisma } from '@/lib/prisma'
 
 const ACTIVE_ORDER_STATUSES = ['pending', 'picked_up', 'in_transit', 'delivering']
 
+export type EmployeeOverviewOrder = {
+  id: string
+  orderCode: string
+  origin: string
+  destination: string
+  status: string
+  totalAmount: number | null
+  estimatedDelivery: Date | null
+  currentLocation: string | null
+  user: {
+    name: string | null
+    profile: {
+      fullName: string | null
+      email: string | null
+      phone: string | null
+    } | null
+  }
+  trackingEvents: Array<{
+    location: string
+    eventTime: Date
+  }>
+}
+
+export type EmployeeOverviewQuoteRequest = {
+  id: string
+  quoteCode: string
+  origin: string
+  destination: string
+  status: string
+  user: {
+    name: string | null
+    profile: {
+      fullName: string | null
+      email: string | null
+      phone: string | null
+    } | null
+  }
+}
+
+export type EmployeeOverviewNotification = {
+  id: string
+  title: string
+  message: string
+  createdAt: Date
+}
+
+export type EmployeeOverviewTopRoute = {
+  origin: string
+  destination: string
+  _count: {
+    _all: number
+  }
+  _sum: {
+    totalAmount: number | null
+  }
+}
+
+export type EmployeeOverview = {
+  stats: {
+    totalOrders: number
+    ordersToday: number
+    activeOrders: number
+    completedOrders: number
+    pendingQuotes: number
+    unreadNotifications: number
+    newCustomersThisWeek: number
+    monthlyRevenue: number
+  }
+  recentOrders: EmployeeOverviewOrder[]
+  pendingQuoteRequests: EmployeeOverviewQuoteRequest[]
+  recentNotifications: EmployeeOverviewNotification[]
+  slaBreaches: EmployeeOverviewOrder[]
+  slaRiskOrders: EmployeeOverviewOrder[]
+  topRoutes: EmployeeOverviewTopRoute[]
+}
+
 function getStartOfToday() {
   const date = new Date()
   date.setHours(0, 0, 0, 0)
@@ -39,7 +115,9 @@ export async function requireEmployeeSession() {
   return session
 }
 
-export async function getEmployeeOverview() {
+export async function getEmployeeOverview(): Promise<EmployeeOverview> {
+  const riskWindowEnd = new Date(Date.now() + 3 * 60 * 60 * 1000)
+
   const [
     totalOrders,
     ordersToday,
@@ -53,7 +131,7 @@ export async function getEmployeeOverview() {
     pendingQuoteRequests,
     recentNotifications,
     slaBreaches,
-    slaAlerts,
+    slaRiskOrders,
     topRoutes,
   ] = await Promise.all([
     prisma.order.count(),
@@ -118,18 +196,29 @@ export async function getEmployeeOverview() {
         user: {
           include: { profile: true },
         },
+        trackingEvents: {
+          orderBy: { eventTime: 'desc' },
+          take: 1,
+        },
       },
     }),
-    prisma.slaAlert.findMany({
-      orderBy: { detectedAt: 'desc' },
-      take: 12,
+    prisma.order.findMany({
+      where: {
+        status: { in: ACTIVE_ORDER_STATUSES },
+        estimatedDelivery: {
+          gte: new Date(),
+          lte: riskWindowEnd,
+        },
+      },
+      orderBy: { estimatedDelivery: 'asc' },
+      take: 5,
       include: {
-        order: {
-          include: {
-            user: {
-              include: { profile: true },
-            },
-          },
+        user: {
+          include: { profile: true },
+        },
+        trackingEvents: {
+          orderBy: { eventTime: 'desc' },
+          take: 1,
         },
       },
     }),
@@ -147,18 +236,6 @@ export async function getEmployeeOverview() {
     }),
   ])
 
-  const slaAlertsByStatus = slaAlerts.reduce(
-    (groups, alert) => {
-      const status = alert.status || 'open'
-      if (!groups[status]) {
-        groups[status] = []
-      }
-      groups[status].push(alert)
-      return groups
-    },
-    /** @type {Record<string, typeof slaAlerts>} */ ({}),
-  )
-
   return {
     stats: {
       totalOrders,
@@ -174,8 +251,7 @@ export async function getEmployeeOverview() {
     pendingQuoteRequests,
     recentNotifications,
     slaBreaches,
-    slaAlerts,
-    slaAlertsByStatus,
+    slaRiskOrders,
     topRoutes,
   }
 }

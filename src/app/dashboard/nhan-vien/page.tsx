@@ -27,38 +27,6 @@ export default async function EmployeeDashboardPage() {
   const session = await requireEmployeeSession()
   const data = await getEmployeeOverview()
 
-  const slaStatusMeta = {
-    open: {
-      label: 'Mở',
-      border: 'border-amber-200',
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-    },
-    acknowledged: {
-      label: 'Đã tiếp nhận',
-      border: 'border-blue-200',
-      bg: 'bg-blue-50',
-      text: 'text-blue-700',
-    },
-    resolved: {
-      label: 'Đã xử lý',
-      border: 'border-green-200',
-      bg: 'bg-green-50',
-      text: 'text-green-700',
-    },
-  } as const
-
-  const slaAlertGroups = [
-    'open',
-    'acknowledged',
-    'resolved',
-  ].map((status) => ({
-    status,
-    label: slaStatusMeta[status as keyof typeof slaStatusMeta].label,
-    alerts: data.slaAlertsByStatus[status] ?? [],
-    ...slaStatusMeta[status as keyof typeof slaStatusMeta],
-  }))
-
   const stats = [
     {
       label: 'Đơn hàng hôm nay',
@@ -217,66 +185,93 @@ export default async function EmployeeDashboardPage() {
           <div className="bg-white rounded-xl border border-border/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <h3 className="text-base font-semibold font-display">
-                Cảnh báo SLA theo trạng thái
+                Cảnh báo SLA
               </h3>
               <AlertCircle className="w-4 h-4 text-amber-600" />
             </div>
-            {data.slaAlerts.length === 0 ? (
+            {data.slaBreaches.length === 0 && data.slaRiskOrders.length === 0 ? (
               <div className="p-6 text-sm text-muted-foreground">Chưa có cảnh báo SLA nào.</div>
             ) : (
-              <div className="space-y-4 p-4">
-                {slaAlertGroups.map((group) => (
-                  <div key={group.status} className={`rounded-lg border ${group.border} ${group.bg}`}>
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/60">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${group.text}`}>{group.label}</span>
-                        <span className="text-xs text-muted-foreground">({group.alerts.length})</span>
-                      </div>
-                      {group.status === 'resolved' ? (
-                        <CheckCircle2 className={`w-4 h-4 ${group.text}`} />
-                      ) : (
-                        <AlertCircle className={`w-4 h-4 ${group.text}`} />
-                      )}
+              <div className="p-4 space-y-4">
+                <div className="rounded-lg border border-red-200 bg-red-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-red-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-red-700">Đã trễ</span>
+                      <span className="text-xs text-muted-foreground">({data.slaBreaches.length})</span>
                     </div>
-
-                    {group.alerts.length === 0 ? (
-                      <div className="px-4 py-3 text-xs text-muted-foreground">Không có cảnh báo trong trạng thái này.</div>
-                    ) : (
-                      <div className="divide-y divide-white/60">
-                        {group.alerts.map((alert) => {
-                          const orderCode = alert.order?.orderCode || 'Không có mã đơn'
-                          const route = alert.order ? `${alert.order.origin} - ${alert.order.destination}` : 'Chưa gắn đơn hàng'
-                          const customer =
-                            alert.order?.user.profile?.fullName ||
-                            alert.order?.user.name ||
-                            'Khách hàng'
-
-                          return (
-                            <div key={alert.id} className="px-4 py-3 space-y-1.5 bg-white/70">
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <div className="text-sm font-semibold">{orderCode}</div>
-                                  <div className="text-xs text-muted-foreground">{route}</div>
-                                </div>
-                                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  {alert.severity || 'normal'}
-                                </span>
-                              </div>
-                              <div className={`text-xs ${group.text} flex items-center gap-1`}>
-                                <Clock className="w-3 h-3" />
-                                Phát hiện lúc {formatDateTime(alert.detectedAt)}
-                              </div>
-                              <div className="text-xs text-muted-foreground">{customer}</div>
-                              {alert.message ? (
-                                <div className="text-xs text-slate-600 line-clamp-2">{alert.message}</div>
-                              ) : null}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
+                    <AlertCircle className="w-4 h-4 text-red-700" />
                   </div>
-                ))}
+                  {data.slaBreaches.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">Không có đơn nào vượt ETA.</div>
+                  ) : (
+                    <div className="divide-y divide-red-100">
+                      {data.slaBreaches.slice(0, 3).map((order) => {
+                        const latestEvent = order.trackingEvents[0]
+                        return (
+                          <div key={order.id} className="px-4 py-3 space-y-1.5 bg-white/80">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold">{order.orderCode}</div>
+                                <div className="text-xs text-muted-foreground">{order.origin} - {order.destination}</div>
+                              </div>
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-red-700">high</span>
+                            </div>
+                            <div className="text-xs text-red-700 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              ETA: {formatDateOnly(order.estimatedDelivery)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {order.user.profile?.fullName || order.user.name || 'Khách hàng'}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              {latestEvent ? `Tracking gần nhất: ${latestEvent.location} - ${formatDateTime(latestEvent.eventTime)}` : 'Chưa có tracking gần nhất'}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-blue-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-blue-700">Có nguy cơ trễ</span>
+                      <span className="text-xs text-muted-foreground">({data.slaRiskOrders.length})</span>
+                    </div>
+                    <Clock className="w-4 h-4 text-blue-700" />
+                  </div>
+                  {data.slaRiskOrders.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">Không có đơn nào ở mức rủi ro.</div>
+                  ) : (
+                    <div className="divide-y divide-blue-100">
+                      {data.slaRiskOrders.slice(0, 3).map((order) => {
+                        const latestEvent = order.trackingEvents[0]
+                        return (
+                          <div key={order.id} className="px-4 py-3 space-y-1.5 bg-white/80">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold">{order.orderCode}</div>
+                                <div className="text-xs text-muted-foreground">{order.origin} - {order.destination}</div>
+                              </div>
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">medium</span>
+                            </div>
+                            <div className="text-xs text-blue-700 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              ETA: {formatDateOnly(order.estimatedDelivery)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {order.user.profile?.fullName || order.user.name || 'Khách hàng'}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              {latestEvent ? `Tracking gần nhất: ${latestEvent.location} - ${formatDateTime(latestEvent.eventTime)}` : 'Chưa có tracking gần nhất'}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

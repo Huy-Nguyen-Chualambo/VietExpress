@@ -20,6 +20,7 @@ import {
   Briefcase,
   ClipboardList,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 
 const employeeNav = [
@@ -28,6 +29,7 @@ const employeeNav = [
   { name: 'Xác nhận lấy hàng', href: '/dashboard/nhan-vien/xac-nhan-lay-hang', icon: CheckCircle2 },
   { name: 'Khách hàng', href: '/dashboard/nhan-vien/khach-hang', icon: Users },
   { name: 'Tuyến đường', href: '/dashboard/nhan-vien/tuyen-duong', icon: Route },
+  { name: 'Cảnh báo SLA', href: '/dashboard/nhan-vien/canh-bao-sla', icon: AlertCircle },
   { name: 'Báo giá', href: '/dashboard/nhan-vien/bao-gia', icon: ClipboardList },
   { name: 'Thống kê', href: '/dashboard/nhan-vien/thong-ke', icon: BarChart3 },
   { name: 'Cài đặt', href: '/dashboard/nhan-vien/cai-dat', icon: Settings },
