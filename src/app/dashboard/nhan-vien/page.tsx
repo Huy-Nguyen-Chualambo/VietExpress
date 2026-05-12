@@ -27,6 +27,38 @@ export default async function EmployeeDashboardPage() {
   const session = await requireEmployeeSession()
   const data = await getEmployeeOverview()
 
+  const slaStatusMeta = {
+    open: {
+      label: 'Mở',
+      border: 'border-amber-200',
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+    },
+    acknowledged: {
+      label: 'Đã tiếp nhận',
+      border: 'border-blue-200',
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+    },
+    resolved: {
+      label: 'Đã xử lý',
+      border: 'border-green-200',
+      bg: 'bg-green-50',
+      text: 'text-green-700',
+    },
+  } as const
+
+  const slaAlertGroups = [
+    'open',
+    'acknowledged',
+    'resolved',
+  ].map((status) => ({
+    status,
+    label: slaStatusMeta[status as keyof typeof slaStatusMeta].label,
+    alerts: data.slaAlertsByStatus[status] ?? [],
+    ...slaStatusMeta[status as keyof typeof slaStatusMeta],
+  }))
+
   const stats = [
     {
       label: 'Đơn hàng hôm nay',
@@ -185,24 +217,64 @@ export default async function EmployeeDashboardPage() {
           <div className="bg-white rounded-xl border border-border/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <h3 className="text-base font-semibold font-display">
-                Cảnh báo SLA
+                Cảnh báo SLA theo trạng thái
               </h3>
               <AlertCircle className="w-4 h-4 text-amber-600" />
             </div>
-            {data.slaBreaches.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground">Không có đơn trễ hạn.</div>
+            {data.slaAlerts.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">Chưa có cảnh báo SLA nào.</div>
             ) : (
-              <div className="divide-y divide-border">
-                {data.slaBreaches.map((order) => (
-                  <div key={order.id} className="px-6 py-4">
-                    <div className="text-sm font-semibold">{order.orderCode}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {order.origin} - {order.destination}
+              <div className="space-y-4 p-4">
+                {slaAlertGroups.map((group) => (
+                  <div key={group.status} className={`rounded-lg border ${group.border} ${group.bg}`}>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/60">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${group.text}`}>{group.label}</span>
+                        <span className="text-xs text-muted-foreground">({group.alerts.length})</span>
+                      </div>
+                      {group.status === 'resolved' ? (
+                        <CheckCircle2 className={`w-4 h-4 ${group.text}`} />
+                      ) : (
+                        <AlertCircle className={`w-4 h-4 ${group.text}`} />
+                      )}
                     </div>
-                    <div className="text-xs text-amber-700 mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Quá ETA từ {formatDateTime(order.estimatedDelivery)}
-                    </div>
+
+                    {group.alerts.length === 0 ? (
+                      <div className="px-4 py-3 text-xs text-muted-foreground">Không có cảnh báo trong trạng thái này.</div>
+                    ) : (
+                      <div className="divide-y divide-white/60">
+                        {group.alerts.map((alert) => {
+                          const orderCode = alert.order?.orderCode || 'Không có mã đơn'
+                          const route = alert.order ? `${alert.order.origin} - ${alert.order.destination}` : 'Chưa gắn đơn hàng'
+                          const customer =
+                            alert.order?.user.profile?.fullName ||
+                            alert.order?.user.name ||
+                            'Khách hàng'
+
+                          return (
+                            <div key={alert.id} className="px-4 py-3 space-y-1.5 bg-white/70">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-sm font-semibold">{orderCode}</div>
+                                  <div className="text-xs text-muted-foreground">{route}</div>
+                                </div>
+                                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {alert.severity || 'normal'}
+                                </span>
+                              </div>
+                              <div className={`text-xs ${group.text} flex items-center gap-1`}>
+                                <Clock className="w-3 h-3" />
+                                Phát hiện lúc {formatDateTime(alert.detectedAt)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{customer}</div>
+                              {alert.message ? (
+                                <div className="text-xs text-slate-600 line-clamp-2">{alert.message}</div>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

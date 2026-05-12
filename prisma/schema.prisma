@@ -96,6 +96,7 @@ model Order {
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   trackingEvents    TrackingEvent[]
+  slaAlerts          SlaAlert[]
 
   @@index([userId, status])
   @@map("orders")
@@ -187,4 +188,22 @@ model ActionLog {
   @@index([actionType, createdAt])
   @@index([actorId, createdAt])
   @@map("action_logs")
+}
+
+model SlaAlert {
+  id         String   @id @default(cuid())
+  orderId    String?  @map("order_id")
+  type       String   @default("alert") @db.VarChar(30) // e.g. alert, warning, info
+  status     String   @default("open") @db.VarChar(30) // open, acknowledged, resolved
+  severity   String?  @db.VarChar(20)
+  message    String?  @db.Text
+  metadata   Json?
+  detectedAt DateTime @map("detected_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order      Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status])
+  @@map("sla_alerts")
 }

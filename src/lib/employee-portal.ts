@@ -53,6 +53,7 @@ export async function getEmployeeOverview() {
     pendingQuoteRequests,
     recentNotifications,
     slaBreaches,
+    slaAlerts,
     topRoutes,
   ] = await Promise.all([
     prisma.order.count(),
@@ -119,6 +120,19 @@ export async function getEmployeeOverview() {
         },
       },
     }),
+    prisma.slaAlert.findMany({
+      orderBy: { detectedAt: 'desc' },
+      take: 12,
+      include: {
+        order: {
+          include: {
+            user: {
+              include: { profile: true },
+            },
+          },
+        },
+      },
+    }),
     prisma.order.groupBy({
       by: ['origin', 'destination'],
       where: { status: 'completed' },
@@ -132,6 +146,18 @@ export async function getEmployeeOverview() {
       take: 5,
     }),
   ])
+
+  const slaAlertsByStatus = slaAlerts.reduce(
+    (groups, alert) => {
+      const status = alert.status || 'open'
+      if (!groups[status]) {
+        groups[status] = []
+      }
+      groups[status].push(alert)
+      return groups
+    },
+    /** @type {Record<string, typeof slaAlerts>} */ ({}),
+  )
 
   return {
     stats: {
@@ -148,6 +174,8 @@ export async function getEmployeeOverview() {
     pendingQuoteRequests,
     recentNotifications,
     slaBreaches,
+    slaAlerts,
+    slaAlertsByStatus,
     topRoutes,
   }
 }
