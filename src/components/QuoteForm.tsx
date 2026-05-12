@@ -13,6 +13,7 @@ import {
   Ruler,
   FileText,
 } from 'lucide-react'
+import { provinces, getDistricts, getWards } from '../lib/locations'
 
 const serviceOptions = [
   { value: 'ftl', label: 'Vận chuyển trên 20kg' },
@@ -29,6 +30,14 @@ const initialFormData = {
   email: '',
   company: '',
   service: '',
+  // structured address fields
+  fromProvince: '',
+  fromDistrict: '',
+  fromWard: '',
+  toProvince: '',
+  toDistrict: '',
+  toWard: '',
+  // legacy raw fields kept for compatibility
   from: '',
   to: '',
   weight: '',
@@ -67,18 +76,29 @@ export default function QuoteForm() {
     setError('')
 
     try {
+      const payloadToSend = {
+        ...formData,
+        // ensure compatibility: send concatenated `from` and `to`
+        from: [formData.fromWard, formData.fromDistrict, formData.fromProvince]
+          .filter(Boolean)
+          .join(', '),
+        to: [formData.toWard, formData.toDistrict, formData.toProvince]
+          .filter(Boolean)
+          .join(', '),
+      }
+
       const response = await fetch('/api/quote-requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payloadToSend),
       })
 
-      const payload = await response.json()
+      const responseJson = await response.json()
 
       if (!response.ok) {
-        setError(payload?.error || 'Không thể gửi yêu cầu báo giá. Vui lòng thử lại.')
+        setError(responseJson?.error || 'Không thể gửi yêu cầu báo giá. Vui lòng thử lại.')
         return
       }
 
@@ -99,12 +119,36 @@ export default function QuoteForm() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    if (error) {
-      setError('')
+    if (error) setError('')
+
+    const name = e.target.name
+    const value = e.target.value
+
+    // when parent select changes, reset dependent selects
+    if (name === 'fromProvince') {
+      setFormData((prev) => ({ ...prev, fromProvince: value, fromDistrict: '', fromWard: '' }))
+      return
+    }
+    if (name === 'fromDistrict') {
+      setFormData((prev) => ({ ...prev, fromDistrict: value, fromWard: '' }))
+      return
+    }
+    if (name === 'toProvince') {
+      setFormData((prev) => ({ ...prev, toProvince: value, toDistrict: '', toWard: '' }))
+      return
+    }
+    if (name === 'toDistrict') {
+      setFormData((prev) => ({ ...prev, toDistrict: value, toWard: '' }))
+      return
     }
 
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
+
+  const fromDistricts = getDistricts((formData as any).fromProvince)
+  const fromWards = getWards((formData as any).fromDistrict)
+  const toDistricts = getDistricts((formData as any).toProvince)
+  const toWards = getWards((formData as any).toDistrict)
 
   return (
     <section
@@ -281,37 +325,110 @@ export default function QuoteForm() {
                     </select>
                   </div>
 
-                  {/* From / To */}
+                  {/* From / To selects (Province → District → Ward) */}
                   <div className="grid sm:grid-cols-2 gap-5">
                     <div>
                       <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
                         <MapPin className="w-3.5 h-3.5 text-green-500" />
                         Điểm gửi <span className="text-brand">*</span>
                       </label>
-                      <input
-                        type="text"
-                        name="from"
-                        required
-                        value={formData.from}
-                        onChange={handleChange}
-                        placeholder="VD: 123 Nguyễn Huệ, Q.1, TP.HCM"
-                        className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm placeholder:text-muted-foreground/50 focus:bg-white transition-colors"
-                      />
+                      <div className="space-y-2">
+                        <select
+                          name="fromProvince"
+                          required
+                          value={(formData as any).fromProvince}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn tỉnh/thành</option>
+                          {provinces.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          name="fromDistrict"
+                          required
+                          value={(formData as any).fromDistrict}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn quận/huyện</option>
+                          {fromDistricts.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          name="fromWard"
+                          value={(formData as any).fromWard}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn phường/xã (nếu có)</option>
+                          {fromWards.map((w) => (
+                            <option key={w} value={w}>
+                              {w}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
+
                     <div>
                       <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
                         <MapPin className="w-3.5 h-3.5 text-brand" />
                         Điểm nhận <span className="text-brand">*</span>
                       </label>
-                      <input
-                        type="text"
-                        name="to"
-                        required
-                        value={formData.to}
-                        onChange={handleChange}
-                        placeholder="VD: 456 Trần Hưng Đạo, P.Tây Hồ, Hà Nội"
-                        className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm placeholder:text-muted-foreground/50 focus:bg-white transition-colors"
-                      />
+                      <div className="space-y-2">
+                        <select
+                          name="toProvince"
+                          required
+                          value={(formData as any).toProvince}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn tỉnh/thành</option>
+                          {provinces.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          name="toDistrict"
+                          required
+                          value={(formData as any).toDistrict}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn quận/huyện</option>
+                          {toDistricts.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          name="toWard"
+                          value={(formData as any).toWard}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-sm focus:bg-white transition-colors"
+                        >
+                          <option value="">Chọn phường/xã (nếu có)</option>
+                          {toWards.map((w) => (
+                            <option key={w} value={w}>
+                              {w}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
