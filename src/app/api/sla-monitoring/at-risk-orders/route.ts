@@ -11,7 +11,10 @@ import { getSlaDeadline } from '@/lib/sla'
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const apiKey = process.env.SLA_MONITORING_API_KEY
+    const authorization = req.headers.get('authorization')?.trim()
+
+    if (!session?.user && authorization !== `Bearer ${apiKey}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
