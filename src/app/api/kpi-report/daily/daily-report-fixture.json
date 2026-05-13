@@ -1,0 +1,423 @@
+{
+  "success": true,
+  "reportType": "daily_kpi_report_continuous_improvement",
+  "generatedAt": "2026-05-13T08:35:37.132Z",
+  "windowHours": 24,
+  "period": {
+    "from": "2026-05-12T08:35:37.132Z",
+    "to": "2026-05-13T08:35:37.132Z"
+  },
+  "assumptions": {
+    "manualActionCostVnd": 12000,
+    "automationActionCostVnd": 2500,
+    "routeQualityModel": "positive_sla_margin_and_on_time_proxy",
+    "aiMetricNotes": {
+      "serviceClassificationAccuracy": "requires labeled ground truth before accuracy can be measured",
+      "feedbackCompletionRate": "requires feedback form telemetry"
+    }
+  },
+  "summary": {
+    "totalOrdersObserved": 14,
+    "totalQuoteRequests": 1,
+    "totalNotifications": 3,
+    "totalSlaAlerts": 14,
+    "totalActionLogs": 0
+  },
+  "operations": {
+    "ordersReceived": 10,
+    "ordersDelivered": 1,
+    "ordersFailed": 0,
+    "averageDeliveryMinutes": 1440,
+    "onTimeRate": 0,
+    "averageSlaMarginMinutes": 2880,
+    "pickupEfficiencyProxy": {
+      "pickupActionsCount": 0,
+      "ordersPerPickupAction": null,
+      "method": "completed_orders_divided_by_pickup_confirm_actions"
+    },
+    "routeOptimizationQuality": {
+      "score": 30,
+      "method": "on_time_rate_and_positive_sla_margin_proxy"
+    }
+  },
+  "aiPerformance": {
+    "parseAddressSuccessRate": 1,
+    "serviceClassificationAccuracy": null,
+    "serviceClassificationCoverage": 1,
+    "riskPredictionAccuracy": 0,
+    "interventionSuccessRate": null,
+    "notificationOpenRate": 0,
+    "feedbackCompletionRate": null
+  },
+  "financial": {
+    "totalRevenueVnd": 1600000,
+    "averageOrderValueVnd": 1600000,
+    "interventionCostVnd": 0,
+    "compensationCostVnd": 0,
+    "estimatedManualLaborSavingsVnd": 0,
+    "automationExecutionCostVnd": 0,
+    "automationNetBenefitVnd": 0,
+    "automationRoiPercent": null,
+    "manualActionsCount": 0,
+    "automationActionsCount": 0
+  },
+  "routeBandStats": [
+    {
+      "routeBand": "noi_tinh",
+      "completedOrders": 0,
+      "onTimeRate": null,
+      "averageDeliveryMinutes": null,
+      "averageSlaMarginMinutes": null,
+      "totalRevenueVnd": 0
+    },
+    {
+      "routeBand": "noi_vung",
+      "completedOrders": 1,
+      "onTimeRate": 0,
+      "averageDeliveryMinutes": 1440.08948333333,
+      "averageSlaMarginMinutes": 2879.91051666667,
+      "totalRevenueVnd": 1600000
+    },
+    {
+      "routeBand": "lien_vung",
+      "completedOrders": 0,
+      "onTimeRate": null,
+      "averageDeliveryMinutes": null,
+      "averageSlaMarginMinutes": null,
+      "totalRevenueVnd": 0
+    },
+    {
+      "routeBand": "lien_tinh",
+      "completedOrders": 0,
+      "onTimeRate": null,
+      "averageDeliveryMinutes": null,
+      "averageSlaMarginMinutes": null,
+      "totalRevenueVnd": 0
+    }
+  ],
+  "hourlySeries": [
+    {
+      "hour": "2026-05-12T08:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T09:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T10:35:37.132Z",
+      "ordersReceived": 1,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T11:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T12:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T13:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T14:35:37.132Z",
+      "ordersReceived": 1,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T15:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T16:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T17:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T18:35:37.132Z",
+      "ordersReceived": 1,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 1,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T19:35:37.132Z",
+      "ordersReceived": 4,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 2,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T20:35:37.132Z",
+      "ordersReceived": 1,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 4,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T21:35:37.132Z",
+      "ordersReceived": 2,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T22:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 1,
+      "ordersFailed": 0,
+      "revenueVnd": 1600000,
+      "notifications": 0,
+      "alerts": 10,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-12T23:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T00:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T01:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T02:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T03:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T04:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T05:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T06:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    },
+    {
+      "hour": "2026-05-13T07:35:37.132Z",
+      "ordersReceived": 0,
+      "ordersDelivered": 0,
+      "ordersFailed": 0,
+      "revenueVnd": 0,
+      "notifications": 0,
+      "alerts": 0,
+      "actions": 0,
+      "manualActions": 0,
+      "automationActions": 0
+    }
+  ],
+  "ruleBasedRecommendations": [
+    "Tăng buffer SLA hoặc phân bổ lại tuyến có tỷ lệ đúng hạn thấp.",
+    "Tối ưu tiêu đề, thời điểm gửi và kênh thông báo để tăng tỷ lệ mở."
+  ],
+  "missingMetrics": [
+    "serviceClassificationAccuracy",
+    "feedbackCompletionRate"
+  ],
+  "sourceCoverage": {
+    "orders": true,
+    "quoteRequests": true,
+    "notifications": true,
+    "slaAlerts": true,
+    "actionLogs": false
+  },
+  "rawCounts": {
+    "createdOrders": 10,
+    "completedOrders": 1,
+    "failedOrders": 0,
+    "quoteRequests": 1,
+    "notificationsRead": 0,
+    "notificationsUnread": 3,
+    "alertedOrders": 14,
+    "interventionActions": 0
+  },
+  "preview": {
+    "topRouteBand": {
+      "routeBand": "noi_vung",
+      "completedOrders": 1,
+      "onTimeRate": 0,
+      "averageDeliveryMinutes": 1440.08948333333,
+      "averageSlaMarginMinutes": 2879.91051666667,
+      "totalRevenueVnd": 1600000
+    }
+  }
+}
