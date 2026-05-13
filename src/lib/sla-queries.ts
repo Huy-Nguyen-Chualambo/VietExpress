@@ -29,6 +29,7 @@ export const SLA_CONFIG = {
 }
 
 export type RouteBand = keyof typeof SLA_CONFIG
+export type ServiceType = 'standard' | 'ftl'
 
 /**
  * Phân loại route dựa trên origin/destination
@@ -144,12 +145,13 @@ export async function fetchAtRiskOrders(
     // Bước 2: Tính SLA metrics cho mỗi order
     const atRiskOrders = orders
       .map((order) => {
-        const routeBand = classifyRouteBand(order.origin, order.destination)
-        const slaConfig = SLA_CONFIG[routeBand][order.serviceType] ||
-          SLA_CONFIG[routeBand].standard || {
-            standardHours: 48,
-            maxHours: 72,
-          }
+            const routeBand = classifyRouteBand(order.origin, order.destination)
+            const serviceType = (order.serviceType as ServiceType) || 'standard'
+            const slaConfig =
+              SLA_CONFIG[routeBand][serviceType] ?? SLA_CONFIG[routeBand].standard ?? {
+                standardHours: 48,
+                maxHours: 72,
+              }
 
         const deadline = calculateSlaDeadline(
           order.estimatedDelivery!,
