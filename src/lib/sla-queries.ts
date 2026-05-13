@@ -309,10 +309,12 @@ export async function logAction(
 /**
  * Phân nhóm orders theo risk level
  */
+export type AtRiskOrder = Awaited<ReturnType<typeof fetchAtRiskOrders>>[number]
+
 export interface GroupedAtRiskOrders {
-  CRITICAL: typeof orders[]
-  HIGH: typeof orders[]
-  MEDIUM: typeof orders[]
+  CRITICAL: AtRiskOrder[]
+  HIGH: AtRiskOrder[]
+  MEDIUM: AtRiskOrder[]
 }
 
 export function groupOrdersByRiskLevel(

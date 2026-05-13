@@ -3,7 +3,7 @@
  * Xác định chiến lược can thiệp tối ưu cho từng order
  */
 
-import type { SlaMetrics } from './sla-queries'
+import type { SlaMetrics, GroupedAtRiskOrders } from './sla-queries'
 
 export type InterventionType =
   | 'REROUTE'
@@ -214,14 +214,7 @@ export interface InterventionPlan {
 }
 
 export function createInterventionPlan(
-  groupedOrders: Record<
-    string,
-    Array<{
-      orderCode: string
-      totalAmount?: number
-      slaMetrics: SlaMetrics
-    }>
-  >,
+  groupedOrders: GroupedAtRiskOrders,
 ): InterventionPlan {
   const criticalWithStrategy = (groupedOrders.CRITICAL || []).map((order) => ({
     orderCode: order.orderCode,
