@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getSlaDeadline } from '@/lib/sla'
-import dailyReportFixture from './daily-report-fixture.json'
 
 const WINDOW_HOURS = 24
 const HOUR_MS = 60 * 60 * 1000
@@ -143,11 +142,6 @@ export async function GET(req: NextRequest) {
 
     if (!session?.user && authorization !== `Bearer ${apiKey}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const mode = req.nextUrl.searchParams.get('mode')?.toLowerCase()
-    if (mode !== 'live') {
-      return NextResponse.json(dailyReportFixture)
     }
 
     const windowHours = Number(req.nextUrl.searchParams.get('windowHours')) || WINDOW_HOURS
