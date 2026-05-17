@@ -8,9 +8,13 @@ const ORDERS_COUNT = 50
 const CUSTOMERS_COUNT = 5
 const DAYS_RANGE = 30 // past 30 days
 const FAILURE_RATE = 0.05 // 5%
+const DAY_MS = 24 * 60 * 60 * 1000
+const KPI_REPORT_START = new Date('2026-04-15T06:17:54.729Z')
+const KPI_REPORT_END = new Date('2026-05-17T06:17:54.729Z')
 
 const MOCK_EMAIL_PREFIX = 'mock.customer'
 const MOCK_ORDER_PREFIX = 'VEX-MOCK-'
+const MOCK_REPORT_PREFIX = 'KPI-MOCK-'
 
 function randomFrom(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -85,6 +89,19 @@ async function createCustomers() {
 
 async function cleanupMockData() {
   // Keep reruns deterministic: clear previous mock dataset first.
+  await prisma.dailyKpiReport.deleteMany({
+    where: { reportType: 'daily_kpi_report_continuous_improvement' },
+  })
+  await prisma.actionLog.deleteMany({
+    where: {
+      actionType: {
+        in: ['EMPLOYEE_CONFIRM_PICKUP', 'AUTOMATION_SEND_NOTIFICATION', 'SLA_INTERVENTION_PROACTIVE_CONTACT'],
+      },
+    },
+  })
+  await prisma.quoteRequest.deleteMany({
+    where: { quoteCode: { startsWith: 'BG-MOCK-' } },
+  })
   await prisma.notification.deleteMany({
     where: { title: { startsWith: 'Order VEX-MOCK-' } },
   })
@@ -170,7 +187,7 @@ async function seedOrders(customers) {
 
     // occasional quote requests
     if (Math.random() < 0.3) {
-      const quote = createQuoteRequestsForCustomer(customer.id, createdAt)
+      const quote = createQuoteRequestsForCustomer(customer.id, createdAt, orderCode)
       await prisma.quoteRequest.create({ data: quote })
     }
 
@@ -287,13 +304,13 @@ function createActionLogsForOrder(orderId, createdAt, willFail) {
   return logs
 }
 
-function createQuoteRequestsForCustomer(userId, createdAt) {
+function createQuoteRequestsForCustomer(userId, createdAt, orderCode) {
   const serviceTypes = ['express', 'ltl', 'ftl', '3pl']
   const origin = randomFrom(['Ha Noi', 'TP. Ho Chi Minh', 'Da Nang'])
   const destination = randomFrom(['Hai Phong', 'Can Tho', 'Binh Duong'])
   return {
     userId,
-    quoteCode: `BG-MOCK-${faker.number.int({ min: 1000, max: 9999 })}`,
+    quoteCode: `BG-MOCK-${orderCode.replace('VEX-MOCK-', '')}`,
     serviceType: randomFrom(serviceTypes),
     origin,
     destination,
@@ -305,6 +322,130 @@ function createQuoteRequestsForCustomer(userId, createdAt) {
   }
 }
 
+function buildDailyKpiReport(dayIndex, generatedAt) {
+  const dayFactor = 1 + dayIndex * 0.012
+  const seasonality = 0.85 + Math.sin(dayIndex / 3) * 0.12
+  const ordersReceived = Math.round(38 * dayFactor * seasonality)
+  const onTimeRate = Number((0.88 + Math.sin(dayIndex / 5) * 0.04).toFixed(3))
+  const ordersDelivered = Math.round(ordersReceived * (0.7 + (onTimeRate - 0.8) * 0.5))
+  const ordersFailed = Math.max(1, Math.round(ordersReceived * (0.03 + (dayIndex % 7 === 0 ? 0.03 : 0))))
+  const slaAlerts = Math.max(0, Math.round(ordersFailed * 1.2))
+  const totalRevenue = BigInt(Math.round(ordersDelivered * (680000 + dayIndex * 12000)))
+  const manualActionsCount = Math.round(ordersReceived * 0.42)
+  const automationActionsCount = Math.round(ordersReceived * 0.58)
+  const interventionCostVnd = slaAlerts * 140000
+  const estimatedManualLaborSavingsVnd = manualActionsCount * 12000
+  const automationExecutionCostVnd = automationActionsCount * 2500 + interventionCostVnd
+  const automationNetBenefitVnd = estimatedManualLaborSavingsVnd - automationExecutionCostVnd
+
+  const operations = {
+    ordersReceived,
+    ordersDelivered,
+    ordersFailed,
+    averageDeliveryMinutes: Math.round(900 - dayIndex * 4 + Math.sin(dayIndex / 2) * 25),
+    onTimeRate,
+    averageSlaMarginMinutes: Math.round(180 - dayIndex * 1.5 + Math.sin(dayIndex / 4) * 30),
+    pickupEfficiencyProxy: {
+      pickupActionsCount: Math.max(1, Math.round(ordersDelivered * 0.62)),
+      ordersPerPickupAction: Number((ordersDelivered / Math.max(1, Math.round(ordersDelivered * 0.62))).toFixed(2)),
+      method: 'completed_orders_divided_by_pickup_confirm_actions',
+    },
+    routeOptimizationQuality: {
+      score: Math.max(55, Math.min(96, Math.round(onTimeRate * 100 - dayIndex * 0.2))),
+      method: 'on_time_rate_and_positive_sla_margin_proxy',
+    },
+  }
+
+  const financial = {
+    totalRevenueVnd: Number(totalRevenue),
+    averageOrderValueVnd: ordersDelivered > 0 ? Math.round(Number(totalRevenue) / ordersDelivered) : 0,
+    interventionCostVnd,
+    compensationCostVnd: Math.round(slaAlerts * 90000),
+    estimatedManualLaborSavingsVnd,
+    automationExecutionCostVnd,
+    automationNetBenefitVnd,
+    automationRoiPercent:
+      automationExecutionCostVnd === 0 ? null : Math.round((automationNetBenefitVnd / automationExecutionCostVnd) * 100),
+    manualActionsCount,
+    automationActionsCount,
+  }
+
+  const summary = {
+    totalOrdersObserved: ordersReceived,
+    totalQuoteRequests: Math.max(2, Math.round(ordersReceived * 0.18)),
+    totalNotifications: Math.round(ordersReceived * 0.95),
+    totalSlaAlerts: slaAlerts,
+    totalActionLogs: manualActionsCount + automationActionsCount,
+  }
+
+  return {
+    generatedAt,
+    reportType: 'daily_kpi_report_continuous_improvement',
+    summary,
+    operations,
+    financial,
+    totalRevenue,
+    onTimeRate,
+    slaAlerts,
+    rawData: {
+      reportType: 'daily_kpi_report_continuous_improvement',
+      generatedAt: generatedAt.toISOString(),
+      period: {
+        from: new Date(generatedAt.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        to: generatedAt.toISOString(),
+      },
+      summary,
+      operations,
+      financial,
+      sourceCoverage: {
+        orders: true,
+        quoteRequests: true,
+        notifications: true,
+        slaAlerts: true,
+        actionLogs: true,
+      },
+      assumptions: {
+        mockData: true,
+        model: 'synthetic_history',
+      },
+    },
+  }
+}
+
+async function seedDailyKpiReports() {
+  await prisma.dailyKpiReport.deleteMany({
+    where: { reportType: 'daily_kpi_report_continuous_improvement' },
+  })
+
+  const reports = []
+  for (
+    let generatedAt = new Date(KPI_REPORT_START),
+      dayIndex = 0;
+    generatedAt <= KPI_REPORT_END;
+    generatedAt = new Date(generatedAt.getTime() + DAY_MS),
+      dayIndex++
+  ) {
+    const report = buildDailyKpiReport(dayIndex, generatedAt)
+    reports.push({
+      generatedAt: report.generatedAt,
+      reportType: report.reportType,
+      summary: report.summary,
+      operations: report.operations,
+      financial: report.financial,
+      totalRevenue: report.totalRevenue,
+      onTimeRate: report.onTimeRate,
+      slaAlerts: report.slaAlerts,
+      rawData: report.rawData,
+    })
+  }
+
+  await prisma.dailyKpiReport.createMany({
+    data: reports,
+  })
+
+  console.log(`Seeded ${reports.length} historical KPI daily reports from 2026-04-15 to 2026-05-17`)
+}
+
 async function main() {
   console.log('Starting mock seed...')
 
@@ -314,6 +455,7 @@ async function main() {
   console.log(`Created ${customers.length} customers`)
 
   await seedOrders(customers)
+  await seedDailyKpiReports()
 
   console.log('Mock seed finished.')
 }

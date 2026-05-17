@@ -207,3 +207,21 @@ model SlaAlert {
   @@index([orderId, status])
   @@map("sla_alerts")
 }
+
+model DailyKpiReport {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  generatedAt  DateTime @map("generated_at") @db.Timestamptz(6)
+  reportType   String?  @map("report_type")
+  summary      Json?
+  operations   Json?
+  financial    Json?
+  totalRevenue BigInt?  @map("total_revenue")
+  onTimeRate   Float?   @map("on_time_rate")
+  slaAlerts    Int?     @map("sla_alerts")
+  rawData      Json?    @map("raw_data")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([generatedAt])
+  @@index([reportType, generatedAt])
+  @@map("daily_kpi_reports")
+}

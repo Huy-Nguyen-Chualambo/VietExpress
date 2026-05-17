@@ -1,19 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import { requireEmployeeSession } from '@/lib/employee-portal'
 import { formatCurrencyVnd } from '@/lib/customer-portal'
-import { safeCountActionLogs } from '@/lib/action-log'
-import { BarChart3, Package, TrendingUp, Users } from 'lucide-react'
-
-function getStartOfToday() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return today
-}
+import { BarChart3, CalendarDays, Package, TrendingUp, Users } from 'lucide-react'
 
 export default async function EmployeeStatsPage() {
   await requireEmployeeSession()
-
-  const startOfToday = getStartOfToday()
 
   const [
     totalOrders,
@@ -23,10 +14,7 @@ export default async function EmployeeStatsPage() {
     totalCustomers,
     totalEmployees,
     revenueSummary,
-    manualActionsToday,
-    automationActionsToday,
-    manualOrderCreatesToday,
-    manualPickupConfirmsToday,
+    dailyKpiReports,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: 'completed' } }),
@@ -39,27 +27,27 @@ export default async function EmployeeStatsPage() {
       _sum: { totalAmount: true },
       _avg: { totalAmount: true },
     }),
-    safeCountActionLogs({
-      mode: 'manual',
-      createdAt: { gte: startOfToday },
-    }),
-    safeCountActionLogs({
-      mode: 'automation',
-      createdAt: { gte: startOfToday },
-    }),
-    safeCountActionLogs({
-      mode: 'manual',
-      actionType: 'CUSTOMER_CREATE_ORDER',
-      createdAt: { gte: startOfToday },
-    }),
-    safeCountActionLogs({
-      mode: 'manual',
-      actionType: 'EMPLOYEE_CONFIRM_PICKUP',
-      createdAt: { gte: startOfToday },
+    prisma.dailyKpiReport.findMany({
+      where: {
+        reportType: 'daily_kpi_report_continuous_improvement',
+      },
+      orderBy: {
+        generatedAt: 'desc',
+      },
+      select: {
+        id: true,
+        generatedAt: true,
+        summary: true,
+        operations: true,
+        financial: true,
+        onTimeRate: true,
+        slaAlerts: true,
+      },
     }),
   ])
 
   const completionRate = totalOrders === 0 ? 0 : Math.round((completedOrders / totalOrders) * 100)
+  const latestDailyReport = dailyKpiReports[0]
 
   return (
     <div className="space-y-6">
@@ -112,32 +100,89 @@ export default async function EmployeeStatsPage() {
       </section>
 
       <section className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-border/50 p-6 space-y-3">
-          <h2 className="text-base font-semibold font-display">Baseline thủ công (hôm nay)</h2>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-border p-4">
-              <div className="text-muted-foreground text-xs mb-1">Tác vụ manual</div>
-              <div className="text-xl font-bold font-display">{manualActionsToday}</div>
+        <div className="bg-white rounded-xl border border-border/50 p-6 space-y-4 lg:col-span-2">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold font-display">Daily KPI Reports</h2>
+              <p className="text-sm text-muted-foreground">Hiển thị dữ liệu tổng hợp theo ngày từ bảng daily_kpi_reports.</p>
             </div>
-            <div className="rounded-xl border border-border p-4">
-              <div className="text-muted-foreground text-xs mb-1">Tạo đơn manual</div>
-              <div className="text-xl font-bold font-display">{manualOrderCreatesToday}</div>
-            </div>
-            <div className="rounded-xl border border-border p-4">
-              <div className="text-muted-foreground text-xs mb-1">Xác nhận lấy hàng</div>
-              <div className="text-xl font-bold font-display">{manualPickupConfirmsToday}</div>
-            </div>
-            <div className="rounded-xl border border-border p-4">
-              <div className="text-muted-foreground text-xs mb-1">Tác vụ automation</div>
-              <div className="text-xl font-bold font-display">{automationActionsToday}</div>
+            <div className="rounded-xl border border-border px-3 py-2 text-right">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Bản mới nhất</div>
+              <div className="text-sm font-semibold font-display">
+                {latestDailyReport
+                  ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(latestDailyReport.generatedAt))
+                  : 'Chưa có dữ liệu'}
+              </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Giữ chế độ manual trước để lấy baseline, sau đó bật workflow và so sánh theo cùng khung thời gian.
-          </p>
-        </div>
 
-        
+          {dailyKpiReports.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Chưa có daily_kpi_reports trong database.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {dailyKpiReports.map((report) => {
+                const summary = report.summary as Record<string, number | null> | null
+                const operations = report.operations as Record<string, number | null> | null
+                const financial = report.financial as Record<string, number | null> | null
+
+                const reportDate = new Intl.DateTimeFormat('vi-VN', {
+                  weekday: 'short',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                }).format(new Date(report.generatedAt))
+
+                return (
+                  <div key={report.id} className="rounded-2xl border border-border/60 p-5 bg-slate-50/70">
+                    <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <CalendarDays className="w-4 h-4 text-brand" />
+                          {reportDate}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          SLA alerts: {report.slaAlerts ?? 0} · on-time rate: {report.onTimeRate == null ? 'N/A' : `${Math.round((report.onTimeRate || 0) * 100)}%`}
+                        </div>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 border border-border">
+                        {summary?.totalOrdersObserved ?? 0} orders
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
+                      <div className="rounded-xl bg-white border border-border p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Đơn quan sát</div>
+                        <div className="text-lg font-bold font-display">{summary?.totalOrdersObserved ?? 0}</div>
+                      </div>
+                      <div className="rounded-xl bg-white border border-border p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Đơn hoàn thành</div>
+                        <div className="text-lg font-bold font-display">{operations?.ordersDelivered ?? 0}</div>
+                      </div>
+                      <div className="rounded-xl bg-white border border-border p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Doanh thu</div>
+                        <div className="text-lg font-bold font-display">{formatCurrencyVnd(Number(financial?.totalRevenueVnd ?? 0))}</div>
+                      </div>
+                      <div className="rounded-xl bg-white border border-border p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Tỷ lệ đúng hạn</div>
+                        <div className="text-lg font-bold font-display">
+                          {operations?.onTimeRate == null ? 'N/A' : `${Math.round(Number(operations.onTimeRate) * 100)}%`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                      <div className="rounded-xl border border-border bg-white p-3">Báo giá: {summary?.totalQuoteRequests ?? 0}</div>
+                      <div className="rounded-xl border border-border bg-white p-3">Notifications: {summary?.totalNotifications ?? 0}</div>
+                      <div className="rounded-xl border border-border bg-white p-3">Tổng action logs: {summary?.totalActionLogs ?? 0}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   )
