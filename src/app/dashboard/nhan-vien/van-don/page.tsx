@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { requireEmployeeSession } from '@/lib/employee-portal'
 import {
@@ -7,7 +8,7 @@ import {
   orderStatusClass,
   orderStatusLabel,
 } from '@/lib/customer-portal'
-import { Package, Route, Truck } from 'lucide-react'
+import { Package, Route, Truck, Cpu } from 'lucide-react'
 import { updateOrderStatusAction } from '../actions'
 
 const ORDER_STATUS_OPTIONS = [
@@ -37,12 +38,21 @@ export default async function EmployeeOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-2xl border border-border/50 p-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Vận đơn</p>
-        <h1 className="text-2xl font-bold font-display">Quản lý vận đơn toàn hệ thống</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Theo dõi danh sách vận đơn, trạng thái xử lý và cập nhật tracking gần nhất.
-        </p>
+      <section className="bg-white rounded-2xl border border-border/50 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Vận đơn</p>
+          <h1 className="text-2xl font-bold font-display">Quản lý vận đơn toàn hệ thống</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Theo dõi danh sách vận đơn, trạng thái xử lý và cập nhật tracking gần nhất.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/nhan-vien/van-don/dieu-phoi"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity shrink-0"
+        >
+          <Cpu className="w-4 h-4 text-white animate-pulse" />
+          Điều phối thông minh AI
+        </Link>
       </section>
 
       <section className="grid sm:grid-cols-3 gap-4">
