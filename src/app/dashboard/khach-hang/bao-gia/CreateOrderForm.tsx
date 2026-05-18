@@ -53,8 +53,7 @@ interface PriceBreakdown {
 export function calculateShippingFee(
   fromProv: string,
   toProv: string,
-  weightKg: number,
-  isSuburban: boolean
+  weightKg: number
 ): PriceBreakdown {
   const from = fromProv.trim().toLowerCase()
   const to = toProv.trim().toLowerCase()
@@ -69,9 +68,7 @@ export function calculateShippingFee(
       from.includes('ho chi minh')
       
     const baseWeight = 3
-    const basePrice = isSpecialCities 
-      ? (isSuburban ? 29000 : 21000) 
-      : (isSuburban ? 29000 : 15500)
+    const basePrice = isSpecialCities ? 21000 : 15500
     const additionalPrice = 2500
     
     if (weightKg <= baseWeight) {
@@ -113,25 +110,25 @@ export function calculateShippingFee(
     if (r1 === r2) {
       // Nội vùng
       routeType = 'Nội vùng'
-      basePrice = isSuburban ? 34000 : 29000
+      basePrice = 29000
       additionalPrice = 2500
     } else {
       const pair = [r1, r2].sort().join('-')
       if (pair === 'Bắc-Nam') {
         // Liên tỉnh cực (Bắc - Nam)
         routeType = 'Liên tỉnh Bắc - Nam'
-        basePrice = isSuburban ? 36000 : 29000
+        basePrice = 29000
         additionalPrice = 5000
       } else {
         // Liên vùng (Bắc-Trung, Nam-Trung)
         routeType = 'Liên vùng'
-        basePrice = isSuburban ? 39000 : 29000
+        basePrice = 29000
         additionalPrice = 5000
       }
     }
   } else {
     // Fallback if region mapping is incomplete
-    basePrice = isSuburban ? 36000 : 29000
+    basePrice = 29000
     additionalPrice = 5000
   }
   
@@ -175,7 +172,6 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
     toDistrict: '',
     toWard: '',
     weightKg: '',
-    deliveryArea: 'urban', // urban = nội thành, suburban = ngoại thành
     note: '',
   })
 
@@ -233,8 +229,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
         const breakdown = calculateShippingFee(
           formData.fromProvince,
           formData.toProvince,
-          weight,
-          formData.deliveryArea === 'suburban'
+          weight
         )
         setPriceResult(breakdown)
       } catch (err) {
@@ -275,8 +270,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
       const finalPrice = calculateShippingFee(
         formData.fromProvince,
         formData.toProvince,
-        weight,
-        formData.deliveryArea === 'suburban'
+        weight
       )
 
       const submitData = new FormData()
@@ -449,38 +443,22 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
           </div>
         </div>
 
-        {/* Delivery Area & Weight */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5 text-brand" /> Khu vực giao
-            </label>
-            <select
-              name="deliveryArea"
-              value={formData.deliveryArea}
-              onChange={handleInputChange}
-              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
-            >
-              <option value="urban">Nội thành (Urban)</option>
-              <option value="suburban">Ngoại thành (Suburban)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
-              <Weight className="w-3.5 h-3.5 text-brand" /> Trọng lượng (kg)
-            </label>
-            <input
-              type="number"
-              name="weightKg"
-              required
-              min="0.1"
-              step="0.1"
-              value={formData.weightKg}
-              onChange={handleInputChange}
-              placeholder="VD: 50"
-              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
-            />
-          </div>
+        {/* Weight input */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
+            <Weight className="w-3.5 h-3.5 text-brand" /> Trọng lượng (kg) <span className="text-brand">*</span>
+          </label>
+          <input
+            type="number"
+            name="weightKg"
+            required
+            min="0.1"
+            step="0.1"
+            value={formData.weightKg}
+            onChange={handleInputChange}
+            placeholder="VD: 50"
+            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
+          />
         </div>
 
         {/* Note */}
