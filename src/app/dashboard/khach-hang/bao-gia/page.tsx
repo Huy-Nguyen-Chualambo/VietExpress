@@ -118,13 +118,20 @@ async function createOrderRequest(formData: FormData) {
   const originStr = [fromWard, fromDistrict, fromProvince].filter(Boolean).join(', ')
   const destinationStr = [toWard, toDistrict, toProvince].filter(Boolean).join(', ')
 
+  const dimensions = String(formData.get('dimensions') ?? '').trim()
+  const noteRaw = String(formData.get('note') ?? '').trim()
+  const combinedNote = [
+    dimensions ? `Kích thước: ${dimensions}` : '',
+    noteRaw
+  ].filter(Boolean).join(' | ')
+
   const rawInput = {
     serviceType: String(formData.get('serviceType') ?? '').trim(),
     origin: originStr,
     destination: destinationStr,
     weightKg: String(formData.get('weightKg') ?? '').trim(),
     totalAmount: String(formData.get('totalAmount') ?? '').trim(),
-    note: String(formData.get('note') ?? '').trim(),
+    note: combinedNote,
   }
 
   const executionModeRaw = String(formData.get('executionMode') ?? '').trim().toLowerCase()
