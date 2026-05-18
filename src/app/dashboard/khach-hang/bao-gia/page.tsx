@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import CreateOrderForm from './CreateOrderForm'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -107,10 +108,20 @@ async function createOrderRequest(formData: FormData) {
     redirect('/dang-nhap')
   }
 
+  const fromProvince = String(formData.get('fromProvince') ?? '').trim()
+  const fromDistrict = String(formData.get('fromDistrict') ?? '').trim()
+  const fromWard = String(formData.get('fromWard') ?? '').trim()
+  const toProvince = String(formData.get('toProvince') ?? '').trim()
+  const toDistrict = String(formData.get('toDistrict') ?? '').trim()
+  const toWard = String(formData.get('toWard') ?? '').trim()
+
+  const originStr = [fromWard, fromDistrict, fromProvince].filter(Boolean).join(', ')
+  const destinationStr = [toWard, toDistrict, toProvince].filter(Boolean).join(', ')
+
   const rawInput = {
     serviceType: String(formData.get('serviceType') ?? '').trim(),
-    origin: String(formData.get('origin') ?? '').trim(),
-    destination: String(formData.get('destination') ?? '').trim(),
+    origin: originStr,
+    destination: destinationStr,
     weightKg: String(formData.get('weightKg') ?? '').trim(),
     totalAmount: String(formData.get('totalAmount') ?? '').trim(),
     note: String(formData.get('note') ?? '').trim(),
@@ -237,100 +248,7 @@ export default async function QuotePage({
 
       <section className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-2xl border border-border/50 p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center">
-                <Send className="w-5 h-5 text-brand" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold font-display">
-                  Tạo đơn mới
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Tạo đơn trực tiếp từ dữ liệu thật.
-                </p>
-              </div>
-            </div>
-
-            <form action={createOrderRequest} className="space-y-4">
-              <input type="hidden" name="executionMode" value="manual" />
-              <div>
-                <label className="block text-sm font-medium mb-2">Dịch vụ</label>
-                <select
-                  name="serviceType"
-                  required
-                  className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                >
-                  <option value="">Chọn dịch vụ</option>
-                  {serviceOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Điểm gửi</label>
-                  <input
-                    name="origin"
-                    required
-                    placeholder="TP. Ho Chi Minh"
-                    className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Điểm nhận</label>
-                  <input
-                    name="destination"
-                    required
-                    placeholder="Ha Noi"
-                    className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Trọng lượng (kg)</label>
-                  <input
-                    name="weightKg"
-                    inputMode="numeric"
-                    placeholder="VD: 500"
-                    className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Giá trị đơn (VND)</label>
-                  <input
-                    name="totalAmount"
-                    inputMode="numeric"
-                    placeholder="VD: 2500000"
-                    className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Ghi chú</label>
-                <textarea
-                  name="note"
-                  rows={4}
-                  placeholder="Mô tả thêm về yêu cầu lấy hàng, giao hàng"
-                  className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-gradient-brand text-white text-sm font-semibold hover:opacity-95 transition-opacity"
-              >
-                <Send className="w-4 h-4" />
-                Tạo đơn ngay
-              </button>
-            </form>
-          </div>
+          <CreateOrderForm onSubmitAction={createOrderRequest} />
 
           <div className="bg-white rounded-2xl border border-border/50 p-6 space-y-3">
             <div className="flex items-center gap-3">
