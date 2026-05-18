@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, MapPin, Package, Truck, Weight, FileText, Calculator, HelpCircle } from 'lucide-react'
+import { Send, MapPin, Package, Truck, Weight, FileText, Calculator, HelpCircle, Ruler } from 'lucide-react'
 import { provinces, getDistricts, getWards } from '@/lib/locations'
 
 const serviceOptions = [
@@ -172,6 +172,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
     toDistrict: '',
     toWard: '',
     weightKg: '',
+    dimensions: '',
     note: '',
   })
 
@@ -283,6 +284,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
       submitData.append('toWard', formData.toWard)
       submitData.append('weightKg', String(weight))
       submitData.append('totalAmount', String(finalPrice.total))
+      submitData.append('dimensions', formData.dimensions)
       submitData.append('note', formData.note)
       submitData.append('executionMode', 'manual')
 
@@ -443,22 +445,37 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
           </div>
         </div>
 
-        {/* Weight input */}
-        <div>
-          <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
-            <Weight className="w-3.5 h-3.5 text-brand" /> Trọng lượng (kg) <span className="text-brand">*</span>
-          </label>
-          <input
-            type="number"
-            name="weightKg"
-            required
-            min="0.1"
-            step="0.1"
-            value={formData.weightKg}
-            onChange={handleInputChange}
-            placeholder="VD: 50"
-            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
-          />
+        {/* Weight & Dimensions */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
+              <Weight className="w-3.5 h-3.5 text-brand" /> Trọng lượng (kg) <span className="text-brand">*</span>
+            </label>
+            <input
+              type="number"
+              name="weightKg"
+              required
+              min="0.1"
+              step="0.1"
+              value={formData.weightKg}
+              onChange={handleInputChange}
+              placeholder="VD: 50"
+              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5 flex items-center gap-1">
+              <Ruler className="w-3.5 h-3.5 text-brand" /> Kích thước (cm)
+            </label>
+            <input
+              type="text"
+              name="dimensions"
+              value={formData.dimensions}
+              onChange={handleInputChange}
+              placeholder="VD: 120x80x100 cm"
+              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm focus:ring-1 focus:ring-brand"
+            />
+          </div>
         </div>
 
         {/* Note */}
@@ -527,15 +544,19 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
           {/* Direct Booking Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting || isCalculating}
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-brand text-white text-sm font-semibold hover:opacity-95 disabled:opacity-50 transition-opacity"
+            disabled={isSubmitting || isCalculating || !priceResult}
+            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+              !priceResult
+                ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border opacity-70'
+                : 'bg-gradient-brand text-white hover:opacity-95'
+            }`}
           >
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Tạo đơn ngay
+            {!priceResult ? 'Hãy tính phí trước' : 'Tạo đơn ngay'}
           </button>
         </div>
       </form>
