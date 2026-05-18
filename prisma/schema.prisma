@@ -225,3 +225,15 @@ model DailyKpiReport {
   @@index([reportType, generatedAt])
   @@map("daily_kpi_reports")
 }
+
+model Intervention {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId    String
+  actionType String   @db.VarChar(50)
+  reason     String   @db.Text
+  status     String   @db.VarChar(50)
+  notifiedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("interventions")
+}
+
