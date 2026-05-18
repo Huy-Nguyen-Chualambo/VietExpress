@@ -52,6 +52,46 @@ function makeOrderCode() {
   return `VEX-${y}${m}${d}-${random}`
 }
 
+const ORDER_DISPATCH_WEBHOOK_URL =
+  process.env.ORDER_DISPATCH_WEBHOOK_URL ||
+  'https://brute-qualm-marina.ngrok-free.dev/webhook-test/order-dispatch'
+
+async function notifyOrderDispatchWebhook(payload: {
+  orderId: string
+  orderCode: string
+  customerId: string
+  origin: string
+  destination: string
+  weight: number | null
+  serviceType: string
+  notes: string
+}) {
+  if (!ORDER_DISPATCH_WEBHOOK_URL) return
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+
+  try {
+    const response = await fetch(ORDER_DISPATCH_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      console.error('Order dispatch webhook returned non-2xx status:', response.status)
+    }
+  } catch (error) {
+    console.error('Order dispatch webhook error:', error)
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 function parsePositiveInteger(value: string | undefined) {
   if (!value) return null
   const parsed = Number(value)
@@ -128,6 +168,18 @@ async function createOrderRequest(formData: FormData) {
       origin: parsed.origin,
       destination: parsed.destination,
     },
+  })
+
+  // Trigger n8n Order Dispatch Webhook
+  void notifyOrderDispatchWebhook({
+    orderId: order.id,
+    orderCode: order.orderCode,
+    customerId: session.user.id,
+    origin: order.origin,
+    destination: order.destination,
+    weight: order.weightKg,
+    serviceType: order.serviceType,
+    notes: parsed.note || '',
   })
 
   revalidatePath('/dashboard/khach-hang/bao-gia')
