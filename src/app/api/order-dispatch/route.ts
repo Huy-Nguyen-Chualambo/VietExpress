@@ -180,35 +180,55 @@ export async function POST(req: NextRequest) {
     })
 
     // ------------------------------------------------------------------------
-    // STEP 4: Staff Assignment (Heuristic Scoring)
-    // ------------------------------------------------------------------------
+    // Heuristic Staff Assignment based on DB drivers
     // Region of the order origin
     const originRegion = getRegion(order.origin)
-    
-    // Core driver pool (dynamic mock matching)
-    const drivers = [
-      { id: 'DRV-001', name: 'Nguyễn Văn Bắc', region: 'Bắc', workload: 2, rating: 4.8 },
-      { id: 'DRV-002', name: 'Trần Minh Nam', region: 'Nam', workload: 1, rating: 4.9 },
-      { id: 'DRV-003', name: 'Lê Hoàng Trung', region: 'Trung', workload: 4, rating: 4.5 },
-      { id: 'DRV-004', name: 'Phạm Thu Bắc', region: 'Bắc', workload: 5, rating: 4.7 },
-      { id: 'DRV-005', name: 'Đỗ Văn Nam', region: 'Nam', workload: 0, rating: 4.6 }
-    ]
 
-    // Score: availability_score (10 - workload*2) + region_match (10 if same region, 0 otherwise) + rating*2
-    const scoredDrivers = drivers.map(drv => {
+    // Fetch drivers from DB
+    const dbDrivers = await prisma.driver.findMany({
+      include: {
+        vehicle: true
+      }
+    })
+
+    // Map required license type based on vehicleType
+    let requiredLicense = 'motorbike'
+    if (vehicleType === 'van') requiredLicense = 'car'
+    if (vehicleType === 'truck' || vehicleType === 'refrigerated_truck') requiredLicense = 'truck'
+    if (vehicleType === 'heavy_truck') requiredLicense = 'heavy_truck'
+
+    // Filter drivers having the compatible license
+    let eligibleDrivers = dbDrivers.filter(drv => drv.licenses.includes(requiredLicense))
+
+    // Fallback if no matching drivers: use all drivers or mock fallback
+    if (eligibleDrivers.length === 0) {
+      eligibleDrivers = dbDrivers.length > 0 ? dbDrivers : [
+        { id: 'mock-drv-001', name: 'Nguyễn Văn Bắc (Mock)', region: 'Bắc', workload: 2, licenses: ['motorbike'], vehicle: null },
+        { id: 'mock-drv-002', name: 'Trần Minh Nam (Mock)', region: 'Nam', workload: 1, licenses: ['car'], vehicle: null },
+        { id: 'mock-drv-003', name: 'Lê Hoàng Trung (Mock)', region: 'Trung', workload: 4, licenses: ['motorbike'], vehicle: null }
+      ] as any
+    }
+
+    // Score based on RegionMatch (10 pts), Workload (up to 10 pts), and default rating (4.7 * 2 = 9.4 pts)
+    const scoredDrivers = eligibleDrivers.map(drv => {
       const regionMatch = drv.region === originRegion ? 10 : 0
       const workloadScore = Math.max(0, 10 - drv.workload * 2)
-      const ratingScore = drv.rating * 2
+      const ratingScore = 9.4
       const totalScore = regionMatch + workloadScore + ratingScore
-      
+
       return {
-        ...drv,
+        id: drv.id,
+        name: drv.name,
+        region: drv.region || 'Bắc',
+        workload: drv.workload,
+        vehicleId: drv.vehicle?.id || null,
+        vehicleType: drv.vehicle?.vehicleType || null,
         scoreBreakdown: { regionMatch, workloadScore, ratingScore },
         totalScore: Math.round(totalScore * 10) / 10
       }
     })
 
-    // Sort by score descending
+    // Sort by totalScore desc
     scoredDrivers.sort((a, b) => b.totalScore - a.totalScore)
     const selectedDriver = scoredDrivers[0]
 
@@ -216,7 +236,7 @@ export async function POST(req: NextRequest) {
       step: 'staff',
       title: 'Chỉ định nhân sự (Staff Assignment)',
       status: 'success',
-      details: `Đã chỉ định tài xế: ${selectedDriver.name} (${selectedDriver.region}) với điểm năng lực điều phối cao nhất: ${selectedDriver.totalScore}/25`,
+      details: `Đã chỉ định tài xế: ${selectedDriver.name} (${selectedDriver.region}) với điểm năng lực điều phối cao nhất: ${selectedDriver.totalScore}/29.4`,
       data: {
         assignedDriver: selectedDriver,
         candidates: scoredDrivers
@@ -260,9 +280,13 @@ export async function POST(req: NextRequest) {
     // ------------------------------------------------------------------------
     const dispatchDetails = `Đơn hàng đã được điều phối tự động sang trạng thái Đang lấy hàng. Phương tiện: ${vehicleType.toUpperCase()}. Nhân sự: ${selectedDriver.name}. ETA: ${etaHours}h.`
 
-    // Update order status to 'picked_up' in database, set estimated delivery
+    // Update order status, set estimated delivery, assign driver and vehicle IDs
     const baseDate = new Date()
     const estimatedDelivery = new Date(baseDate.getTime() + etaHours * 60 * 60 * 1000)
+
+    const isMockDriver = selectedDriver.id.startsWith('mock-drv-')
+    const finalDriverId = isMockDriver ? null : selectedDriver.id
+    const finalVehicleId = isMockDriver ? null : selectedDriver.vehicleId
 
     await prisma.$transaction([
       prisma.order.update({
@@ -270,7 +294,9 @@ export async function POST(req: NextRequest) {
         data: {
           status: 'picked_up',
           currentLocation: order.origin,
-          estimatedDelivery
+          estimatedDelivery,
+          assignedDriverId: finalDriverId,
+          assignedVehicleId: finalVehicleId
         }
       }),
       prisma.trackingEvent.create({
@@ -284,6 +310,8 @@ export async function POST(req: NextRequest) {
       prisma.notification.create({
         data: {
           userId: order.userId,
+          orderId: order.id,
+          channel: 'in_app',
           type: 'info',
           title: `Đơn hàng ${order.orderCode} đã sẵn sàng vận chuyển`,
           message: `Đơn hàng của bạn đã được sắp xếp vận chuyển bằng xe ${vehicleType} cùng tài xế ${selectedDriver.name}. Dự kiến giao hàng: ${estimatedDelivery.toLocaleDateString('vi-VN')}.`

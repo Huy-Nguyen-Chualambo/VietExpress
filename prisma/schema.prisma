@@ -10,18 +10,18 @@ datasource db {
 
 // NextAuth Models
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?   @map("password_hash")
-  accounts      Account[]
-  sessions      Session[]
-  profile       Profile?
-  orders        Order[]
-  quoteRequests  QuoteRequest[]
-  notifications  Notification[]
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String?
+  email           String?          @unique
+  emailVerified   DateTime?
+  image           String?
+  passwordHash    String?          @map("password_hash")
+  accounts        Account[]
+  sessions        Session[]
+  profile         Profile?
+  orders          Order[]
+  quoteRequests   QuoteRequest[]
+  notifications   Notification[]
   customerSetting CustomerSetting?
   actionLogs      ActionLog[]
 
@@ -33,7 +33,7 @@ model Account {
   userId            String  @db.Uuid
   type              String
   provider          String
-  providerAccountId  String
+  providerAccountId String
   refresh_token     String?
   access_token      String?
   expires_at        Int?
@@ -82,7 +82,7 @@ model Profile {
 
 model Order {
   id                String          @id @default(cuid())
-  userId            String          @db.Uuid @map("user_id")
+  userId            String          @map("user_id") @db.Uuid
   orderCode         String          @unique @map("order_code") @db.VarChar(50)
   origin            String          @db.VarChar(255)
   destination       String          @db.VarChar(255)
@@ -96,34 +96,40 @@ model Order {
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   trackingEvents    TrackingEvent[]
-  slaAlerts          SlaAlert[]
+  slaAlerts         SlaAlert[]
+  notifications     Notification[]
+
+  assignedDriverId  String?  @map("assigned_driver_id") @db.Uuid
+  assignedVehicleId String?  @map("assigned_vehicle_id") @db.Uuid
+  assignedDriver    Driver?  @relation(fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  assignedVehicle   Vehicle? @relation(fields: [assignedVehicleId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@map("orders")
 }
 
 model QuoteRequest {
-  id                     String   @id @default(cuid())
-  userId                 String   @db.Uuid @map("user_id")
-  quoteCode              String   @unique @map("quote_code") @db.VarChar(50)
-  customerName           String?  @map("customer_name") @db.VarChar(255)
-  customerPhone          String?  @map("customer_phone") @db.VarChar(50)
-  customerEmail          String?  @map("customer_email") @db.VarChar(255)
-  serviceType            String   @map("service_type") @db.VarChar(50)
-  origin                 String   @db.VarChar(255)
-  destination            String   @db.VarChar(255)
-  weight                 String?  @db.VarChar(50)
-  dimensions             String?  @db.VarChar(100)
-  note                   String?  @db.Text
-  status                 String   @default("pending") @db.VarChar(30)
-  quotedPrice            Int?     @map("quoted_price")
-  priceBase              Int?     @map("Price_Base")
-  suggestedSurcharges    Json?    @map("suggested_surcharges")
-  finalSuggestedPrice    Int?     @map("final_suggested_price")
-  pricingReasoning       String?  @map("pricing_reasoning") @db.Text
-  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id") @db.Uuid
+  quoteCode           String   @unique @map("quote_code") @db.VarChar(50)
+  customerName        String?  @map("customer_name") @db.VarChar(255)
+  customerPhone       String?  @map("customer_phone") @db.VarChar(50)
+  customerEmail       String?  @map("customer_email") @db.VarChar(255)
+  serviceType         String   @map("service_type") @db.VarChar(50)
+  origin              String   @db.VarChar(255)
+  destination         String   @db.VarChar(255)
+  weight              String?  @db.VarChar(50)
+  dimensions          String?  @db.VarChar(100)
+  note                String?  @db.Text
+  status              String   @default("pending") @db.VarChar(30)
+  quotedPrice         Int?     @map("quoted_price")
+  priceBase           Int?     @map("Price_Base")
+  suggestedSurcharges Json?    @map("suggested_surcharges")
+  finalSuggestedPrice Int?     @map("final_suggested_price")
+  pricingReasoning    String?  @map("pricing_reasoning") @db.Text
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@map("quote_requests")
@@ -143,39 +149,43 @@ model TrackingEvent {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String   @db.Uuid @map("user_id")
-  type      String   @default("info") @db.VarChar(20)
-  title     String   @db.VarChar(255)
-  message   String   @db.Text
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id") @db.Uuid
+  orderId   String?   @map("order_id")
+  channel   String?   @default("in_app") @db.VarChar(50) // in_app | email | sms
+  type      String    @default("info") @db.VarChar(20)
+  title     String    @db.VarChar(255)
+  message   String    @db.Text
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @default(now()) @map("sent_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@map("notifications")
 }
 
 model CustomerSetting {
-  id                String   @id @default(cuid())
-  userId            String   @db.Uuid @unique @map("user_id")
-  language          String   @default("vi") @db.VarChar(10)
-  theme             String   @default("light") @db.VarChar(20)
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id") @db.Uuid
+  language           String   @default("vi") @db.VarChar(10)
+  theme              String   @default("light") @db.VarChar(20)
   emailNotifications Boolean  @default(true) @map("email_notifications")
-  smsNotifications  Boolean   @default(false) @map("sms_notifications")
-  pushNotifications Boolean   @default(true) @map("push_notifications")
-  companyName       String?   @map("company_name") @db.VarChar(255)
-  phone             String?   @db.VarChar(50)
-  address           String?   @db.VarChar(255)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smsNotifications   Boolean  @default(false) @map("sms_notifications")
+  pushNotifications  Boolean  @default(true) @map("push_notifications")
+  companyName        String?  @map("company_name") @db.VarChar(255)
+  phone              String?  @db.VarChar(50)
+  address            String?  @db.VarChar(255)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("customer_settings")
 }
 
 model ActionLog {
   id         String   @id @default(cuid())
-  actorId    String?  @db.Uuid @map("actor_id")
+  actorId    String?  @map("actor_id") @db.Uuid
   mode       String   @default("manual") @db.VarChar(20)
   actionType String   @map("action_type") @db.VarChar(80)
   entityType String?  @map("entity_type") @db.VarChar(50)
@@ -202,7 +212,7 @@ model SlaAlert {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order      Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId, status])
   @@map("sla_alerts")
@@ -237,3 +247,33 @@ model Intervention {
   @@map("interventions")
 }
 
+model Driver {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  region    String?
+  status    String   @default("available") // available | busy | offline
+  workload  Int      @default(0)
+  licenses  String[] @default([]) // e.g. ["motorbike", "car", "truck", "heavy_truck"]
+  vehicleId String?  @map("vehicle_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  orders  Order[]
+
+  @@map("drivers")
+}
+
+model Vehicle {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleType String   @map("vehicle_type") // motorbike | van | truck | refrigerated_truck | heavy_truck
+  capacityKg  Int?     @map("capacity_kg")
+  status      String   @default("available") // available | busy | maintenance
+  region      String?
+  plateNumber String?  @map("plate_number")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  drivers Driver[]
+  orders  Order[]
+
+  @@map("vehicles")
+}
