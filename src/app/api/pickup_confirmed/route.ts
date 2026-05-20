@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const baseUrl = process.env.N8N_WEBHOOK_BASE_URL || "https://brute-qualm-marina.ngrok-free.dev/webhook-test/pickup-confirmed";
+  const baseUrl = process.env.N8N_WEBHOOK_BASE_URL || "http://localhost:5678/webhook-test/pickup-confirmed";
   if (!baseUrl) {
     return NextResponse.json(
       { ok: false, error: "N8N_WEBHOOK_BASE_URL is not configured" },
