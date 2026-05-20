@@ -8,115 +8,102 @@ async function main() {
   await prisma.driver.deleteMany()
   await prisma.vehicle.deleteMany()
 
-  // 2. Create Vehicles
-  const vehicle1 = await prisma.vehicle.create({
-    data: {
-      vehicleType: 'motorbike',
-      capacityKg: 50,
-      status: 'available',
-      region: 'Bắc',
-      plateNumber: '29-A1 123.45',
+  const regions = [
+    {
+      name: 'Phường Xuân Phương, Quận Nam Từ Liêm, Hà Nội',
+      platePrefix: '29',
+    },
+    {
+      name: 'Phường Mỹ Phước, Thị xã Bến Cát, Bình Dương',
+      platePrefix: '61',
+    },
+    {
+      name: 'Phường Tân Định, Quận 1, Hồ Chí Minh',
+      platePrefix: '51',
+    },
+  ]
+
+  const vehicleTypes = [
+    'heavy_truck',
+    'truck',
+    'refrigerated_truck',
+    'motorbike',
+    'van',
+  ]
+
+  const capacityByType = {
+    heavy_truck: 15000,
+    truck: 5000,
+    refrigerated_truck: 3500,
+    motorbike: 50,
+    van: 1000,
+  }
+
+  const vehiclesByRegion = new Map()
+  let plateCounter = 1
+
+  // 2. Create Vehicles (each region has at least 5 types)
+  for (const region of regions) {
+    const vehicles = []
+    for (const vehicleType of vehicleTypes) {
+      const plateNumber = `${region.platePrefix}-${String(plateCounter).padStart(2, '0')} ${String(100 + plateCounter).padStart(3, '0')}.${String(plateCounter % 100).padStart(2, '0')}`
+      plateCounter += 1
+
+      const vehicle = await prisma.vehicle.create({
+        data: {
+          vehicleType,
+          capacityKg: capacityByType[vehicleType],
+          status: 'available',
+          region: region.name,
+          plateNumber,
+        },
+      })
+
+      vehicles.push(vehicle)
     }
-  })
+    vehiclesByRegion.set(region.name, vehicles)
+  }
 
-  const vehicle2 = await prisma.vehicle.create({
-    data: {
-      vehicleType: 'van',
-      capacityKg: 1000,
-      status: 'available',
-      region: 'Nam',
-      plateNumber: '51-D2 999.88',
+  console.log(`Created ${regions.length * vehicleTypes.length} vehicles.`)
+
+  // 3. Create Drivers (each region has at least 5 drivers with matching licenses)
+  const driverNameSeeds = [
+    'Nguyễn Văn',
+    'Trần Minh',
+    'Lê Hoàng',
+    'Phạm Anh',
+    'Nguyễn Thanh',
+  ]
+
+  const driverSuffixByRegion = {
+    'Phường Xuân Phương, Quận Nam Từ Liêm, Hà Nội': ['Bắc', 'Hà', 'Thắng', 'Nam', 'An'],
+    'Phường Mỹ Phước, Thị xã Bến Cát, Bình Dương': ['Bình', 'Dương', 'Phước', 'Lộc', 'Hậu'],
+    'Phường Tân Định, Quận 1, Hồ Chí Minh': ['Sơn', 'Hải', 'Lâm', 'Khang', 'Tùng'],
+  }
+
+  for (const region of regions) {
+    const vehicles = vehiclesByRegion.get(region.name) || []
+    const suffixes = driverSuffixByRegion[region.name]
+
+    for (let i = 0; i < vehicleTypes.length; i++) {
+      const vehicleType = vehicleTypes[i]
+      const driverName = `${driverNameSeeds[i]} ${suffixes[i]}`
+      const vehicle = vehicles.find((item) => item.vehicleType === vehicleType) || null
+
+      await prisma.driver.create({
+        data: {
+          name: driverName,
+          region: region.name,
+          status: 'available',
+          workload: 0,
+          licenses: [vehicleType],
+          vehicleId: vehicle ? vehicle.id : null,
+        },
+      })
     }
-  })
+  }
 
-  const vehicle3 = await prisma.vehicle.create({
-    data: {
-      vehicleType: 'truck',
-      capacityKg: 5000,
-      status: 'available',
-      region: 'Bắc',
-      plateNumber: '29-C 555.22',
-    }
-  })
-
-  const vehicle4 = await prisma.vehicle.create({
-    data: {
-      vehicleType: 'refrigerated_truck',
-      capacityKg: 3500,
-      status: 'available',
-      region: 'Nam',
-      plateNumber: '51-F 888.11',
-    }
-  })
-
-  const vehicle5 = await prisma.vehicle.create({
-    data: {
-      vehicleType: 'heavy_truck',
-      capacityKg: 15000,
-      status: 'available',
-      region: 'Trung',
-      plateNumber: '43-H 777.66',
-    }
-  })
-
-  console.log('Created 5 vehicles.')
-
-  // 3. Create Drivers with license mapping and associate with vehicles
-  await prisma.driver.create({
-    data: {
-      name: 'Nguyễn Văn Bắc',
-      region: 'Bắc',
-      status: 'available',
-      workload: 0,
-      licenses: ['motorbike', 'car'],
-      vehicleId: vehicle1.id,
-    }
-  })
-
-  await prisma.driver.create({
-    data: {
-      name: 'Trần Minh Nam',
-      region: 'Nam',
-      status: 'available',
-      workload: 0,
-      licenses: ['car', 'truck'],
-      vehicleId: vehicle2.id,
-    }
-  })
-
-  await prisma.driver.create({
-    data: {
-      name: 'Lê Hoàng Trung',
-      region: 'Trung',
-      status: 'available',
-      workload: 0,
-      licenses: ['motorbike', 'car'],
-    }
-  })
-
-  await prisma.driver.create({
-    data: {
-      name: 'Phạm Anh Dũng',
-      region: 'Bắc',
-      status: 'available',
-      workload: 0,
-      licenses: ['truck', 'heavy_truck'],
-      vehicleId: vehicle3.id,
-    }
-  })
-
-  await prisma.driver.create({
-    data: {
-      name: 'Nguyễn Thanh Tùng',
-      region: 'Nam',
-      status: 'available',
-      workload: 0,
-      licenses: ['truck'],
-      vehicleId: vehicle4.id,
-    }
-  })
-
-  console.log('Created 5 drivers.')
+  console.log(`Created ${regions.length * vehicleTypes.length} drivers.`)
   console.log('Drivers and vehicles seeded successfully.')
 }
 
