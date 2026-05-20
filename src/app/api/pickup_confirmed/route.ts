@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+const PICKUP_CONFIRMED_WEBHOOK_URL =
+  process.env.PICKUP_CONFIRMED_WEBHOOK_URL ||
+  "https://brute-qualm-marina.ngrok-free.dev/webhook-test/pickup-confirmed";
+
 type PickupConfirmedPayload = {
   orderId: string;
   driverId: string;
@@ -38,15 +42,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const webhookUrl = process.env.PICKUP_CONFIRMED_WEBHOOK_URL;
-  if (!webhookUrl) {
+  if (!PICKUP_CONFIRMED_WEBHOOK_URL) {
     return NextResponse.json(
       { ok: false, error: "PICKUP_CONFIRMED_WEBHOOK_URL is not configured" },
       { status: 500 }
     );
   }
 
-  const res = await fetch(webhookUrl, {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  const res = await fetch(PICKUP_CONFIRMED_WEBHOOK_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -58,7 +64,11 @@ export async function POST(request: NextRequest) {
       notes: payload.notes || "",
       status: payload.status,
     }),
+    signal: controller.signal,
+    cache: "no-store",
   });
+
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const text = await res.text();
