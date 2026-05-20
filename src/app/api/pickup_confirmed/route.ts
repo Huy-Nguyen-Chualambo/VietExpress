@@ -90,12 +90,15 @@ export async function GET(request: Request) {
 
   const webhookUrl = `${baseUrl.replace(/\/$/, "")}/xac-nhan-lay-hang`;
   const query = new URLSearchParams({
-      orderId: payload.orderId,
-      driverId: payload.driverId,
-      pickedUpAt: payload.pickedUpAt,
-      notes: payload.notes || "",
-      status: payload.status,
-    }),
+    orderId: payload.orderId,
+    driverId: payload.driverId,
+    pickedUpAt: payload.pickedUpAt,
+    notes: payload.notes || "",
+    status: payload.status,
+  });
+
+  const res = await fetch(`${webhookUrl}?${query.toString()}`, {
+    method: "GET",
   });
 
   if (!res.ok) {
