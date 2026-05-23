@@ -6,6 +6,10 @@ import { requireEmployeeSession } from '@/lib/employee-portal'
 import { safeCreateActionLog } from '@/lib/action-log'
 import { notifyQuoteApprovalWebhook } from '@/app/api/quote-approvals/route'
 
+const PICKUP_CONFIRMED_WEBHOOK_URL =
+  process.env.PICKUP_CONFIRMED_WEBHOOK_URL ||
+  'https://brute-qualm-marina.ngrok-free.dev/webhook-test/pickup-confirmed'
+
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: 'Chờ xử lý',
   picked_up: 'Đã lấy hàng',
@@ -51,6 +55,42 @@ function parseOptionalDate(value: FormDataEntryValue | null) {
   if (!trimmed) return null
   const parsed = new Date(trimmed)
   return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+type PickupConfirmedPayload = {
+  orderId: string
+  driverId: string | null
+  pickedUpAt: string
+  notes: string
+  status: string
+  location: string
+}
+
+async function notifyPickupConfirmedWebhook(payload: PickupConfirmedPayload) {
+  if (!PICKUP_CONFIRMED_WEBHOOK_URL) return
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+
+  try {
+    const response = await fetch(PICKUP_CONFIRMED_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      console.error('Pickup confirmed webhook returned non-2xx status:', response.status)
+    }
+  } catch (error) {
+    console.error('Pickup confirmed webhook error:', error)
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export async function approveQuoteAction(formData: FormData) {
@@ -221,6 +261,7 @@ export async function confirmPickupAction(formData: FormData) {
       userId: true,
       orderCode: true,
       status: true,
+      assignedDriverId: true,
     },
   })
 
@@ -268,6 +309,15 @@ export async function confirmPickupAction(formData: FormData) {
       location,
       pickupTime: (pickupTime ?? new Date()).toISOString(),
     },
+  })
+
+  void notifyPickupConfirmedWebhook({
+    orderId: order.id,
+    driverId: order.assignedDriverId ?? null,
+    pickedUpAt: (pickupTime ?? new Date()).toISOString(),
+    notes,
+    status: 'picked_up',
+    location,
   })
 
   revalidatePath('/dashboard/nhan-vien')
