@@ -27,10 +27,7 @@ import {
 const serviceOptions = [
   { value: 'ftl', label: 'Vận tải nguyên xe (FTL)' },
   { value: 'ltl', label: 'Vận tải ghép hàng (LTL)' },
-  { value: '3pl', label: 'Dịch vụ 3PL' },
-  { value: 'express', label: 'Chuyển phát nhanh' },
   { value: 'cold', label: 'Vận tải lạnh' },
-  { value: 'doc', label: 'Chứng từ & Thủ tục' },
 ]
 
 const quoteSchema = z.object({

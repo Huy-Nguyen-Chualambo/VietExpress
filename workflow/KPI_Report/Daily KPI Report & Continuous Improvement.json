@@ -1,0 +1,306 @@
+{
+  "name": "Daily KPI Report & Continuous Improvement",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9ed1b5d0-8405-4308-b05e-a3bf4754acad",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "55fb01d2-4489-4068-8bf1-ad6f019349f6",
+      "name": "Schedule Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        368,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://viet-express.vercel.app/api/kpi-report/daily",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "windowHours",
+              "value": "24"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "__Host-next-auth.csrf-token=141e698800a0ccd7902be6954204d55200d1df4f2864bbe3b65a4149072e1246%7C964b25b4e4599c4fd9bee5721c325d16dd64c34e3981b18fc7beafb682985553; __Secure-next-auth.callback-url=https%3A%2F%2Fviet-express.vercel.app%2Fdang-nhap; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..is21J6N7ZJvhXnET.2UOlBrHAAP2OrXfZ-_Tzc6Sqos_nrn0Oyy2tsFV-nQaJG2jiz6mzrPOoaTP2JSQYWFG2jK-DRiSYydEjHTfQcur5G0KMkJISXzb8tSKzgyCK6e-xAMHx_CyaaLB5P6VpF8obmsYQbV4PJcX69tts7eF6nDLPTVj4P0GOPPniBxX0yyHNxTmVLRdm0nDFh3JkNe03UAWu27sTxPyfWYgnZ0oAVic5FD1hThdulPO3PObBNFOLm5BKyDZ7DDSMFm_DQiJqiv-iH6Wb5woytnkK86SZsJ8B55KD.wtyKeRgXmJc4pTNcLNWzpw"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "69fb01cb-bb08-4845-948b-6d453cd26823",
+      "name": "Fetch KPI Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        592,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lấy dữ liệu từ node Fetch API (Thay 'Fetch KPI Report' bằng tên node của bạn)\nconst currentRaw = $( \"Fetch KPI Report\" ).first().json.body; \n\n// Lấy dữ liệu từ node Supabase (Thay 'Supabase Select' bằng tên node của bạn)\nconst historyRaw = $( \"daily_kpi_reports\" ).all(); \n\n// Tạo bản sao để tránh lỗi read-only\nconst current = JSON.parse(JSON.stringify(currentRaw));\nconst history = JSON.parse(JSON.stringify(historyRaw));\n\n// 1. Tính toán tài chính\nconst todayRevenue = current.financial?.totalRevenueVnd || 0;\nconst yesterdayRevenue = history[0]?.json?.financial?.totalRevenueVnd || todayRevenue;\nconst revenueGrowth = ((todayRevenue - yesterdayRevenue) / (yesterdayRevenue || 1)) * 100;\n\n// 2. So sánh vận hành (On-time Rate)\nconst todayOTR = current.operations?.onTimeRate || 0;\nconst historyOTR = history.map(h => h.json?.operations?.onTimeRate || 0);\nconst avgOTR = historyOTR.length ? historyOTR.reduce((a, b) => a + b, 0) / historyOTR.length : todayOTR;\n\n// 3. Cảnh báo SLA\nconst todayAlerts = current.summary?.totalSlaAlerts || 0;\nconst yesterdayAlerts = history[0]?.json?.summary?.totalSlaAlerts || 0;\n\nreturn {\n  report: current,\n  analytics: {\n    comparison: {\n      revenueGrowthPercent: revenueGrowth.toFixed(2),\n      otrVsHistory: (todayOTR - avgOTR).toFixed(4),\n      alertsChange: todayAlerts - yesterdayAlerts\n    },\n    historySummary: {\n      daysTracked: history.length,\n      averageOnTimeRate: avgOTR.toFixed(4)\n    }\n  },\n  contextForAI: {\n    insights_from_history: `Doanh thu ${revenueGrowth >= 0 ? 'tăng' : 'giảm'} ${Math.abs(revenueGrowth).toFixed(2)}% so với hôm trước. ` +\n                           `Tỷ lệ đúng hạn là ${(todayOTR * 100).toFixed(1)}%, ` +\n                           `${todayOTR >= avgOTR ? 'cao hơn' : 'thấp hơn'} trung bình lịch sử (${(avgOTR * 100).toFixed(1)}%).`\n  }\n};"
+      },
+      "id": "6cf55449-4ebc-423f-8989-d93fab7fbb79",
+      "name": "Build Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lấy output thô từ AI Agent\nconst rawOutput = $json.output;\n\n// Hàm trích xuất JSON từ chuỗi văn bản (đề phòng AI trả về text thừa)\nfunction extractJson(text) {\n  try {\n    // Tìm vị trí bắt đầu { và kết thúc }\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start !== -1 && end !== -1) {\n      const jsonStr = text.substring(start, end + 1);\n      return JSON.parse(jsonStr);\n    }\n    throw new Error(\"Không tìm thấy cấu trúc JSON trong phản hồi của AI.\");\n  } catch (e) {\n    return {\n      error: \"Lỗi Parse JSON\",\n      raw: text,\n      message: e.message\n    };\n  }\n}\n\nconst parsedData = extractJson(rawOutput);\n\n// Trả về dữ liệu đã được làm sạch\nreturn {\n  executiveSummary: parsedData[\"Executive Summary\"] || parsedData.executiveSummary,\n  risks: parsedData.Risks || parsedData.risks || [],\n  recommendations: parsedData.Recommendations || parsedData.recommendations || [],\n  fullParsed: parsedData\n};"
+      },
+      "id": "9c6222a1-c4c2-41aa-92fc-d13359ebead8",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 1. Lấy dữ liệu từ các node trước đó trong workflow\nconst apiReport = $(\"Fetch KPI Report\").first().json.body;\nconst aiAnalysis = $(\"Parse AI Response\").first().json;\n\n// 2. Gom tất cả dữ liệu thành các trường tương ứng chính xác với các cột Supabase\nreturn {\n  // Khớp với các cột kiểu dữ liệu TEXT và TIMESTAMPTZ\n  generated_at: apiReport.generatedAt,\n  report_type: apiReport.reportType,\n  \n  // Khớp với các cột kiểu dữ liệu Số (int8, float8, int4)\n  total_revenue: apiReport.financial?.totalRevenueVnd || 0,\n  on_time_rate: apiReport.operations?.onTimeRate || 0,\n  sla_alerts: apiReport.summary?.totalSlaAlerts || 0,\n  \n  // Khớp với các cột kiểu dữ liệu JSONB\n  // Chúng ta đóng gói các phần nhỏ và kết quả phân tích của AI vào đây để Dashboard Web gọi ra hiển thị\n  summary: {\n    totalOrdersObserved: apiReport.summary?.totalOrdersObserved,\n    totalQuoteRequests: apiReport.summary?.totalQuoteRequests,\n    totalNotifications: apiReport.summary?.totalNotifications,\n    totalSlaAlerts: apiReport.summary?.totalSlaAlerts,\n    totalActionLogs: apiReport.summary?.totalActionLogs\n  },\n  \n  operations: {\n    ordersReceived: apiReport.operations?.ordersReceived,\n    ordersDelivered: apiReport.operations?.ordersDelivered,\n    ordersFailed: apiReport.operations?.ordersFailed,\n    averageDeliveryMinutes: apiReport.operations?.averageDeliveryMinutes,\n    onTimeRate: apiReport.operations?.onTimeRate,\n    averageSlaMarginMinutes: apiReport.operations?.averageSlaMarginMinutes,\n    routeBandStats: apiReport.routeBandStats // Đẩy thống kê tuyến vào đây luôn để Web vẽ biểu đồ\n  },\n  \n  financial: {\n    totalRevenueVnd: apiReport.financial?.totalRevenueVnd,\n    averageOrderValueVnd: apiReport.financial?.averageOrderValueVnd,\n    automationRoiPercent: apiReport.financial?.automationRoiPercent,\n    automationNetBenefitVnd: apiReport.financial?.automationNetBenefitVnd,\n    // Đút kèm đống Executive Summary, Risks, Recommendations từ AI vào object tài chính/vận hành tổng thể\n    aiInsights: {\n      executiveSummary: aiAnalysis.executiveSummary,\n      risks: aiAnalysis.risks,\n      recommendations: aiAnalysis.recommendations\n    }\n  },\n  \n  // Khớp cột raw_data (jsonb) - Lưu nguyên bản dữ liệu API để dự phòng\n  raw_data: apiReport\n};"
+      },
+      "id": "90083937-34dd-4233-b641-79d2b4eb1c51",
+      "name": "Final Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là chuyên gia tối ưu hóa vận hành AI(sử dụng tiếng Việt). Hãy phân tích báo cáo KPI hôm nay dựa trên bối cảnh lịch sử sau:\n\nDữ liệu hôm nay: {{ $json.report }}\n\nSo sánh lịch sử: {{ $json.analytics.comparison }}\n\nNhận định nhanh: {{ $json.contextForAI.insights_from_history }}\n\nYêu cầu: > - Đánh giá xem việc cải tiến AI (ROI {{ $json.report.financial.automationRoiPercent }}%) có thực sự giúp giảm SLA Alerts không?\n\nTại sao tỷ lệ đúng hạn thấp ({{ $json.report.operations.onTimeRate }}) mặc dù doanh thu rất cao?\n\nXuất ra kết quả dưới dạng JSON (Executive Summary, Risks, Recommendations).\"",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        544,
+        288
+      ],
+      "id": "4801aa2a-74cf-4e9a-a4d0-a78f4c7263b5",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        544,
+        464
+      ],
+      "id": "fc05e28a-276f-4163-86fc-d1ab8e31da81",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "pyEQTjsLEUnskbpk",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "daily_kpi_reports",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        816,
+        48
+      ],
+      "id": "a1e11011-0213-4973-9642-9bfd3d0fbd44",
+      "name": "daily_kpi_reports",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "daily_kpi_reports",
+        "dataToSend": "autoMapInputData",
+        "inputsToIgnore": "="
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        192
+      ],
+      "id": "3a8c30a1-5e9f-4e14-8df8-85c55ffe5e71",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch KPI Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Daily": {
+      "main": [
+        [
+          {
+            "node": "Fetch KPI Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch KPI Report": {
+      "main": [
+        [
+          {
+            "node": "daily_kpi_reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Analytics": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Final Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Report": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "daily_kpi_reports": {
+      "main": [
+        [
+          {
+            "node": "Build Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ddf1cc26-1fdb-4007-aecc-9bf42b893740",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ef622c93a68ceb2a9ce8a4595d6557c99ccab97fef24ed99bef0d88601f1cb84"
+  },
+  "id": "cebEl8A6QVuv0Fwc",
+  "tags": []
+}

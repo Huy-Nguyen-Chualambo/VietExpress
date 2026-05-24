@@ -1,0 +1,1071 @@
+{
+  "name": "Order Dispatch Orchestration - Full",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-dispatch",
+        "options": {}
+      },
+      "id": "9e0a3900-d3e4-41b7-8c98-ce53da1858fe",
+      "name": "Order Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -256
+      ],
+      "webhookId": "order-dispatch-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Validate & normalize\nconst body = $json.body || $json;\nconst required = [\"orderId\",\"origin\",\"destination\",\"weight\",\"serviceType\"];\nconst missing = required.filter(k => body[k] == null || body[k] === \"\");\nif (missing.length) throw new Error(\"Missing: \" + missing.join(\", \"));\nreturn {\n  orderId: body.orderId,\n  customerId: body.customerId || null,\n  origin: body.origin,\n  destination: body.destination,\n  weight: Number(body.weight),\n  serviceType: String(body.serviceType).toLowerCase(),\n  notes: body.notes || \"\"\n};"
+      },
+      "id": "81727e2a-20c1-4373-8da2-d19912786446",
+      "name": "Validate Order Intake",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Select Vehicle (n8n Code node)\n\nconst vehicles = $input.all().map((item) => item.json);\nif (!vehicles.length) {\n  throw new Error(\"No vehicles returned from Get driver info.\");\n}\n\nconst normalizeText = (value) =>\n  String(value || \"\")\n    .toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\");\n\nconst order = $items(\"Validate Order Intake\")[0]?.json || {};\nconst aiParse = $items(\"Parse output\")[0]?.json || {};\n\nconst origin = order.origin || \"\";\nconst originNorm = normalizeText(origin);\n\nconst targetVehicleType = aiParse.vehicle_type\n  ? String(aiParse.vehicle_type).toLowerCase()\n  : null;\n\nconst candidates = vehicles.filter((vehicle) => {\n  const statusOk = String(vehicle.status || \"\").toLowerCase() === \"available\";\n  const typeOk = targetVehicleType\n    ? String(vehicle.vehicle_type || \"\").toLowerCase() === targetVehicleType\n    : false;\n\n  const regionNorm = normalizeText(vehicle.region || \"\");\n  const regionOk = originNorm && regionNorm.includes(originNorm);\n\n  return statusOk && typeOk && regionOk;\n});\n\nconst selected = candidates[0] || null;\n\nreturn selected\n  ? {\n      ...order,\n      assignedVehicle: selected,\n      assignedVehicleId: selected.id,\n      vehicleType: selected.vehicle_type || null,\n    }\n  : {\n      ...order,\n      assignedVehicle: null,\n      assignedVehicleId: null,\n      vehicleType: targetVehicleType,\n    };"
+      },
+      "id": "0235402a-a6de-44ab-8f75-695e323c25d8",
+      "name": "Select Vehicle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assign Driver (n8n Code node)\n\nconst drivers = $input.all().map((item) => item.json);\nif (!drivers.length) {\n  throw new Error(\"No drivers returned from Get driver info.\");\n}\n\nconst normalizeText = (value) =>\n  String(value || \"\")\n    .toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\");\n\nconst order = $items(\"Validate Order Intake\")[0]?.json || {};\nconst origin = order.origin || \"\";\nconst originNorm = normalizeText(origin);\n\n// 1) Basic filters\nconst available = drivers.filter((driver) => {\n  const statusOk = String(driver.status || \"\").toLowerCase() === \"available\";\n  const workload = Number(driver.workload ?? 0);\n  return statusOk && workload < 6;\n});\n\n// 2) Region match (origin ~ region)\nconst regionMatches = available.filter((driver) => {\n  const regionNorm = normalizeText(driver.region || \"\");\n  return originNorm && (regionNorm.includes(originNorm) || originNorm.includes(regionNorm));\n});\n\n// 3) Pick candidates: prefer region match, else all available\nconst candidates = regionMatches.length ? regionMatches : available;\n\n// 4) Pick lowest workload set\nconst minWorkload = Math.min(\n  ...candidates.map((d) => Number(d.workload ?? 0))\n);\nconst lowest = candidates.filter(\n  (d) => Number(d.workload ?? 0) === minWorkload\n);\n\n// 5) Random pick among lowest workload\nconst selected =\n  lowest.length > 1\n    ? lowest[Math.floor(Math.random() * lowest.length)]\n    : lowest[0] || null;\n\nreturn selected\n  ? {\n      ...order,\n      assignedDriver: selected,\n      assignedDriverId: selected.id,\n      assignedDriverName: selected.name || null,\n      assignedDriverRegion: selected.region || null,\n    }\n  : {\n      ...order,\n      assignedDriver: null,\n      assignedDriverId: null,\n      assignedDriverName: null,\n      assignedDriverRegion: null,\n    };"
+      },
+      "id": "18c86c65-c724-4817-bec2-86bd07c4beb5",
+      "name": "Assign Driver",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.data ? JSON.parse($json.data) : $json;\n\nconst feature = raw.features?.[0];\nconst segment = feature?.properties?.segments?.[0];\nconst summary = feature?.properties?.summary;\n\nconst distanceMeters =\n  summary?.distance ||\n  segment?.distance ||\n  0;\n\nconst durationSeconds =\n  summary?.duration ||\n  segment?.duration ||\n  0;\n\nreturn [\n  {\n    json: {\n      distanceMeters,\n      distanceKm: Number((distanceMeters / 1000).toFixed(1)),\n\n      durationSeconds,\n      durationMinutes: Number((durationSeconds / 60).toFixed(1)),\n      durationHours: Number((durationSeconds / 3600).toFixed(2)),\n\n      routeSummary: {\n        distanceKm: Number((distanceMeters / 1000).toFixed(1)),\n        durationHours: Number((durationSeconds / 3600).toFixed(2)),\n      }\n    }\n  } \n  ]\n"
+      },
+      "id": "1ce9db52-3f92-4d58-9ed5-e87fafe8cc6c",
+      "name": "Route & ETA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -64
+      ],
+      "id": "f467b8a1-7fb7-4e15-92b6-f31078c000af",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "pyEQTjsLEUnskbpk",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "drivers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "licenses",
+              "keyValue": "={{ $('Parse output').item.json.licenses[0] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        -128
+      ],
+      "id": "1cca6f8d-7dad-43e4-88ae-f1e8c7a3b541",
+      "name": "Get driver info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "vehicles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "vehicle_type",
+              "keyValue": "={{ $json.vehicle_type }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -224
+      ],
+      "id": "1fbf3b2d-cd2f-49d7-b53d-0cc977eedd74",
+      "name": "Get vehicle info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// LTL/FTL classification & consolidation\nconst MIN_FILL_RATIO = 0.8;\n\nconst VEHICLE_CAPACITY = [\n  { vehicleType: 'motorbike', capacityKg: 50 },\n  { vehicleType: 'van', capacityKg: 1000 },\n  { vehicleType: 'refrigerated_truck', capacityKg: 3500 },\n  { vehicleType: 'heavy_truck', capacityKg: 15000 }\n];\n\nfunction getProvince(address) {\n  const parts = String(address || '')\n    .split(',')\n    .map((part) => part.trim())\n    .filter(Boolean);\n  return parts.length ? parts[parts.length - 1] : String(address || '').trim();\n}\n\nfunction normalizeOrder(item) {\n  const data = item.json || {};\n  const orderId = data.id || data.orderId || '';\n  const serviceType = String(data.service_type || data.serviceType || '').toLowerCase();\n  const weightKg = Number(data.weight_kg ?? data.weight ?? 0) || 0;\n\n  return {\n    raw: data,\n    orderId,\n    serviceType,\n    origin: data.origin || '',\n    destination: data.destination || '',\n    weightKg,\n  };\n}\n\nfunction pickMinVehicle(weightKg) {\n  if (!Number.isFinite(weightKg)) weightKg = 0;\n  const sorted = [...VEHICLE_CAPACITY].sort((a, b) => a.capacityKg - b.capacityKg);\n  return sorted.find((v) => v.capacityKg >= weightKg) || sorted[sorted.length - 1];\n}\n\nfunction pickLtlVehicle(weightKg, minFillRatio) {\n  const sorted = [...VEHICLE_CAPACITY].sort((a, b) => a.capacityKg - b.capacityKg);\n\n  const candidates = sorted.filter(\n    (v) =>\n      weightKg <= v.capacityKg &&\n      weightKg / v.capacityKg >= minFillRatio\n  );\n\n  const selected = candidates[0] || pickMinVehicle(weightKg);\n\n  const fillPercent =\n    selected.capacityKg > 0\n      ? (weightKg / selected.capacityKg) * 100\n      : 0;\n\n  const ready =\n    weightKg >= selected.capacityKg * minFillRatio;\n\n  return {\n    ...selected,\n    fillPercent: Number(fillPercent.toFixed(1)),\n    ready\n  };\n}\n\nconst orders = $input\n  .all()\n  .map(normalizeOrder)\n  .filter((o) => o.orderId);\n\nif (orders.length === 0) {\n  return [];\n}\n\nconst ltlGroups = new Map();\n\nfor (const order of orders) {\n  if (order.serviceType !== 'ltl') continue;\n\n  const originProvince = getProvince(order.origin);\n  const destinationProvince = getProvince(order.destination);\n\n  const key = `${originProvince}__${destinationProvince}`;\n\n  const group = ltlGroups.get(key) || {\n    key,\n    originProvince,\n    destinationProvince,\n    orders: [],\n    totalWeightKg: 0,\n  };\n\n  group.orders.push(order);\n  group.totalWeightKg += order.weightKg;\n\n  ltlGroups.set(key, group);\n}\n\nconst ltlPlans = new Map();\n\nfor (const group of ltlGroups.values()) {\n  const vehicle = pickLtlVehicle(\n    group.totalWeightKg,\n    MIN_FILL_RATIO\n  );\n\n  ltlPlans.set(group.key, {\n    ...group,\n    vehicle,\n  });\n}\n\nreturn orders.map((order) => {\n  const base = {\n    orderId: order.orderId,\n    serviceType: order.serviceType,\n    origin: order.origin,\n    destination: order.destination,\n    weightKg: order.weightKg,\n    assignedDriver: $input.first().json.assigned_vehicle_id ,\n  };\n\n  if (order.serviceType === 'ltl') {\n    const originProvince = getProvince(order.origin);\n    const destinationProvince = getProvince(order.destination);\n\n    const key = `${originProvince}__${destinationProvince}`;\n\n    const plan = ltlPlans.get(key);\n\n    return {\n      ...base,\n      vehicleType: plan?.vehicle.vehicleType || null,\n      dispatchMode: plan?.vehicle.ready\n        ? 'ltl_ready'\n        : 'ltl_hold',\n      ltlGroupKey: key,\n      ltlTotalWeightKg:\n        plan?.totalWeightKg ?? order.weightKg,\n      ltlFillPercent:\n        plan?.vehicle.fillPercent ?? 0,\n      ltlMinFillRatio: MIN_FILL_RATIO,\n    };\n  }\n\n  if (order.serviceType === 'ftl') {\n    const vehicle = pickMinVehicle(order.weightKg);\n\n    return {\n      ...base,\n      vehicleType: vehicle.vehicleType,\n      dispatchMode: 'ftl_direct',\n      ftlCapacityKg: vehicle.capacityKg,\n    };\n  }\n\n  const vehicle = pickMinVehicle(order.weightKg);\n\n  return {\n    ...base,\n    vehicleType: vehicle.vehicleType,\n    dispatchMode: 'standard',\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        448
+      ],
+      "id": "9dd12cbe-4663-4dd6-89bd-4ef66b10e819",
+      "name": "classify"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Choose vehicle based on service type + province rule + region proximity\n\nconst vehicles = $input.all().map((item) => item.json || {});\n\nconst orderSource =\n  $items('classify')[0]?.json ||\n  $items('Get order info')[0]?.json ||\n  $json ||\n  {};\n\nconst serviceType = String(\n  orderSource.serviceType ||\n  orderSource.service_type ||\n  ''\n).toLowerCase();\n\nconst toNum = (value, fallback = 0) => {\n  const n = Number(value);\n  return Number.isFinite(n) ? n : fallback;\n};\n\nconst normalizeText = (value) =>\n  String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\./g, '')\n    .trim();\n\nconst getProvince = (address) => {\n  const parts = String(address || '')\n    .split(',')\n    .map((part) => part.trim())\n    .filter(Boolean);\n\n  return parts.length\n    ? parts[parts.length - 1]\n    : String(address || '').trim();\n};\n\nconst originProvince = getProvince(\n  orderSource.origin || ''\n);\n\nconst destinationProvince = getProvince(\n  orderSource.destination || ''\n);\n\nconst sameProvince =\n  normalizeText(originProvince) &&\n  normalizeText(originProvince) ===\n    normalizeText(destinationProvince);\n\nconst allowedTypes = sameProvince\n  ? new Set([\n      'motorbike',\n      'van',\n      'truck',\n      'refrigerated_truck',\n      'heavy_truck',\n    ])\n  : new Set([\n      'van',\n      'truck',\n      'refrigerated_truck',\n      'heavy_truck',\n    ]);\n\nconst availableVehicles = vehicles.filter(\n  (vehicle) => {\n    const statusOk =\n      String(vehicle.status || '').toLowerCase() ===\n      'available';\n\n    const typeOk = allowedTypes.has(\n      String(vehicle.vehicle_type || '').toLowerCase()\n    );\n\n    return statusOk && typeOk;\n  }\n);\n\nconst originNorm = normalizeText(originProvince);\n\nconst regionMatched = availableVehicles.filter(\n  (vehicle) => {\n    const regionNorm = normalizeText(\n      vehicle.region || ''\n    );\n\n    return (\n      originNorm &&\n      (\n        regionNorm.includes(originNorm) ||\n        originNorm.includes(regionNorm)\n      )\n    );\n  }\n);\n\nconst candidates = regionMatched.length\n  ? regionMatched\n  : availableVehicles;\n\nconst ltlWeight = toNum(\n  orderSource.ltlTotalWeightKg ??\n    orderSource.weightKg ??\n    orderSource.weight ??\n    orderSource.weight_kg,\n  0\n);\n\nconst ftlWeight = toNum(\n  orderSource.weightKg ??\n    orderSource.weight ??\n    orderSource.weight_kg,\n  0\n);\n\nfunction pickLtlVehicle(list, totalWeight) {\n  const fitting = list.filter(\n    (v) =>\n      toNum(v.capacity_available, 0) >=\n      totalWeight\n  );\n\n  if (fitting.length > 0) {\n    const sorted = [...fitting].sort((a, b) => {\n      const aRemain =\n        toNum(a.capacity_available, 0) -\n        totalWeight;\n\n      const bRemain =\n        toNum(b.capacity_available, 0) -\n        totalWeight;\n\n      return aRemain - bRemain;\n    });\n\n    return sorted[0];\n  }\n\n  return (\n    [...list].sort(\n      (a, b) =>\n        toNum(b.capacity_available, 0) -\n        toNum(a.capacity_available, 0)\n    )[0] || null\n  );\n}\n\nfunction pickFtlVehicle(list, weight) {\n  const fitting = list.filter(\n    (v) => toNum(v.capacity_kg, 0) >= weight\n  );\n\n  if (fitting.length > 0) {\n    const sorted = [...fitting].sort(\n      (a, b) =>\n        toNum(a.capacity_kg, 0) -\n        toNum(b.capacity_kg, 0)\n    );\n\n    return sorted[0];\n  }\n\n  return (\n    [...list].sort(\n      (a, b) =>\n        toNum(b.capacity_kg, 0) -\n        toNum(a.capacity_kg, 0)\n    )[0] || null\n  );\n}\n\nlet selected = null;\nlet selectionReason = '';\n\nif (serviceType === 'ltl') {\n  selected = pickLtlVehicle(\n    candidates,\n    ltlWeight\n  );\n\n  selectionReason = selected\n    ? `LTL best-fit capacity_available for ${ltlWeight} kg`\n    : 'No available vehicle for LTL';\n\n} else if (serviceType === 'ftl') {\n  selected = pickFtlVehicle(\n    candidates,\n    ftlWeight\n  );\n\n  selectionReason = selected\n    ? `FTL best-fit capacity_kg for ${ftlWeight} kg`\n    : 'No available vehicle for FTL';\n\n} else {\n  selected = pickFtlVehicle(\n    candidates,\n    ftlWeight\n  );\n\n  selectionReason = selected\n    ? `Standard best-fit capacity_kg for ${ftlWeight} kg`\n    : 'No available vehicle';\n}\n\nreturn [\n  {\n    json: {\n      ...orderSource,\n\n      selectedVehicle: selected,\n\n      assignedVehicleId:\n        selected?.id || null,\n\n      vehicleType:\n        selected?.vehicle_type || null,\n\n      plateNumber:\n        selected?.plate_number || null,\n\n      capacityRemaining:\n        serviceType === 'ltl' && selected\n          ? toNum(selected.capacity_available, 0) -\n            ltlWeight\n          : null,\n      capacityFillPercent:\n  serviceType === 'ltl' && selected\n    ? Number(\n        (\n          (ltlWeight /\n            toNum(selected.capacity_available, 1)) *\n          100\n        ).toFixed(1)\n      )\n    : null,\n\n      selectionReason,\n\n      sameProvince,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        448
+      ],
+      "id": "8596c453-fdab-417c-ad90-6c9e7efa4e1b",
+      "name": "choose vehicle"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là hệ thống phân loại hàng hóa trong logistics.\n\nNhiệm vụ: đọc thông tin đơn hàng và trả về JSON với:\n- cargoType: \"standard - bình thường\" | \"fragile - hàng dễ vỡ\" | \"cold - vận tải lạnh\" | \"hazard - hàng nguy hiểm\" | \"cod - thanh toán trước\" | \"heavy - quá tải, quá khổ\"\n- confidence: 0.0 - 1.0\n- handlingRequirements: mô tả ngắn cách xử lý\n- reason: giải thích ngắn lý do phân loại\n\nQUY TẮC:\n1) Nếu serviceType = \"cold\" → cargoType = \"cold\"\n2) Nếu notes có từ khóa: \"dễ vỡ, thủy tinh, fragile\" → fragile\n3) Nếu có từ khóa: \"nguy hiểm, hóa chất, cháy nổ, hazard\" → hazard\n4) Nếu totalAmount > 5,000,000 → cod\n5) Nếu không có dấu hiệu đặc biệt → standard\n6) Nếu trọng lượng lớn, quá khổ → heavy\n\nNgoài các trường đã yêu cầu, hãy trả thêm:\n- vehicle_type: \"motorbike\" | \"van\" | \"refrigerated_truck\" | \"heavy_truck\"\n- licenses: [\"motorbike\"] | [\"van\"] | [\"refrigerated_truck\"] | [\"heavy_truck\"]\n\nQUY TẮC mapping theo capacity_kg:\n- 50  -> motorbike\n- 1000 -> van\n- 3500 -> refrigerated_truck\n- 15000 -> heavy_truck\n\n- \"motorbike\" = [\"motorbike\"]\n- \"van\" = [\"van\"]\n- \"refrigerated_truck\" = [\"refrigerated_truck\"]\n- \"heavy_truck\" = [\"heavy_truck\"]\n\nĐầu vào (JSON):\n{{JSON.stringify($json)}}\n\nChỉ trả về JSON đúng cấu trúc, không thêm chữ khác.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        272,
+        -256
+      ],
+      "id": "4a5cae3b-6b3b-40a1-8987-9837b634dc70",
+      "name": "AI classify cargo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lấy raw output\nconst raw = $json.output || \"{}\";\n\n// Parse JSON string\nconst data = JSON.parse(raw);\n\nreturn [\n  {\n    json: {\n      cargoType: data.cargoType || null,\n      confidence: data.confidence || 0,\n      handlingRequirements: data.handlingRequirements || \"\",\n      reason: data.reason || \"\",\n      vehicle_type: data.vehicle_type || \"\",\n      licenses: data.licenses || \"\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -256
+      ],
+      "id": "6ffd96d1-d9b8-4733-801b-481a28781cb7",
+      "name": "Parse output"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get driver info').item.json.email }}",
+        "subject": "[VietExpress] Thông Báo đi lấy hàng khách gửi ",
+        "message": "=VietExpress phân công tài xế {{ $('Get driver info').item.json.name }} đến lấy hàng của đơn {{ $('Order Intake Webhook').item.json.body.orderCode }}.   Thông tin đơn: - Địa chỉ: {{ $('Order Intake Webhook').item.json.body.origin }} - Phân loại: {{ $('Parse output').item.json.cargoType }}  - Trọng lượng: {{ $('Order Intake Webhook').item.json.body.weight }} kg - Lưu ý: {{ $('Parse output').item.json.handlingRequirements }}.  Trân trọng, VietExpress",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2224,
+        -144
+      ],
+      "id": "2730d067-cea4-4194-bfb4-833d7c9fcfc0",
+      "name": "Send notification to driver",
+      "webhookId": "af9edcd3-9a43-4715-97fa-b45368967530",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JyeLeQrdVeBG2B1G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opencagedata.com/geocode/v1/json?q={{ $json.origin }}&key=b933ae59aba34be996ffbb8bddf50acf&limit=1&language=vi&countrycode=vn",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1168,
+        400
+      ],
+      "id": "1e8a8502-6fc2-4e2e-8e93-d1b744f1ddde",
+      "name": "Geo origin"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opencagedata.com/geocode/v1/json?q={{ $('choose a driver').item.json.destination }} &key=b933ae59aba34be996ffbb8bddf50acf&limit=1&language=vi&countrycode=vn",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1376,
+        400
+      ],
+      "id": "e3f01bc3-1f3e-4cac-8b96-f607e2a05013",
+      "name": "Geo destination"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openrouteservice.org/v2/directions/driving-car?api_key=eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjQ3Y2NlY2NmMTlhODQzNzY4YWM0Y2RlOGEyYjRkYmY0IiwiaCI6Im11cm11cjY0In0=&start={{ $('Geo origin').item.json.results[0].geometry.lng }},{{ $('Geo origin').item.json.results[0].geometry.lat }}&end={{ $json.results[0].geometry.lng }},{{ $json.results[0].geometry.lat }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1584,
+        400
+      ],
+      "id": "fcc4f960-eca5-4ee9-8ea5-255a00a42f91",
+      "name": "Get distance"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pickup-confirmed",
+        "options": {
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        448
+      ],
+      "id": "f29911ed-c085-4a41-b12d-5dec9f6822d4",
+      "name": "Confirm pick up Webhook",
+      "webhookId": "fab56c6f-f95d-4fa3-aa57-9436fbd1760e"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.orderId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        448
+      ],
+      "id": "155319ed-334c-4443-990a-bf71853ccb40",
+      "name": "Get order info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "vehicles"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        448
+      ],
+      "id": "e05949f1-fd46-4342-8d70-1837ab9ecf65",
+      "name": "Get list vehicles",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "drivers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "licenses",
+              "keyValue": "={{ $json.vehicleType }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        624,
+        448
+      ],
+      "id": "dad405ab-4319-4b3b-8b6b-c8189b9b4cd5",
+      "name": "Get list drivers",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Choose driver by origin proximity + vehicle type + availability\n\nconst drivers = $input.all().map((item) => item.json || {});\n\nconst orderSource =\n  $items('choose vehicle')[0]?.json ||\n  $items('classify')[0]?.json ||\n  $items('Get order info')[0]?.json ||\n  $json ||\n  {};\n\nconst origin = String(orderSource.origin || '');\n\nconst vehicleType = String(\n  orderSource.vehicleType ||\n  orderSource.vehicle_type ||\n  ''\n).toLowerCase();\n\nconst assignedVehicleId =\n  orderSource.assignedVehicleId ||\n  orderSource.selectedVehicle?.id ||\n  null;\n\nconst LICENSE_MAP = {\n  motorbike: 'motorbike',\n  van: 'van',\n  truck: 'truck',\n  refrigerated_truck: 'truck',\n  heavy_truck: 'heavy_truck',\n};\n\nconst requiredLicense =\n  LICENSE_MAP[vehicleType] || 'motorbike';\n\nconst normalizeText = (value) =>\n  String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\./g, '')\n    .trim();\n\nconst normalizeLicenses = (value) => {\n  if (Array.isArray(value)) {\n    return value.map((item) =>\n      normalizeText(item)\n    );\n  }\n\n  if (typeof value === 'string') {\n    return value\n      .split(/[\\s,]+/)\n      .map((item) => normalizeText(item))\n      .filter(Boolean);\n  }\n\n  return [];\n};\n\nconst originNorm = normalizeText(origin);\n\nconst availableDrivers = drivers.filter(\n  (driver) =>\n    String(driver.status || '').toLowerCase() ===\n    'available'\n);\n\nconst licensedDrivers = availableDrivers.filter(\n  (driver) => {\n    const licenses = normalizeLicenses(\n      driver.licenses\n    );\n\n    return licenses.includes(requiredLicense);\n  }\n);\n\nconst scored = licensedDrivers.map((driver) => {\n  const regionNorm = normalizeText(\n    driver.region || ''\n  );\n\n  const regionMatch =\n    originNorm &&\n    (\n      regionNorm.includes(originNorm) ||\n      originNorm.includes(regionNorm)\n    );\n\n  const vehicleMatch =\n    assignedVehicleId &&\n    driver.vehicle_id === assignedVehicleId;\n\n  const workload = Number(driver.workload ?? 0);\n\n  const score =\n    (vehicleMatch ? 50 : 0) +\n    (regionMatch ? 10 : 0) -\n    workload;\n\n  return {\n    driver,\n    score,\n    regionMatch,\n    vehicleMatch,\n    workload,\n  };\n});\n\nscored.sort((a, b) => {\n  if (b.score !== a.score) {\n    return b.score - a.score;\n  }\n\n  return a.workload - b.workload;\n});\n\nconst best = scored[0] || null;\n\nconst selected = best?.driver || null;\n\nreturn [\n  {\n    json: {\n      ...orderSource,\n\n      assignedDriver: selected,\n\n      assignedDriverId:\n        selected?.id || null,\n\n      assignedDriverName:\n        selected?.name || null,\n\n      assignedDriverRegion:\n        selected?.region || null,\n\n      driverSelectionReason: selected\n        ? `Match: ${\n            best?.regionMatch\n              ? 'region'\n              : 'license'\n          }${\n            best?.vehicleMatch\n              ? ' + vehicle'\n              : ''\n          }`\n        : 'No available driver',\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        448
+      ],
+      "id": "3e49139b-68e8-4de3-8bf4-162bf8213a63",
+      "name": "choose a driver"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "={{ $('Get order info').item.json.status }}"
+            },
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Get order info').item.json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        464
+      ],
+      "id": "49061cfb-89dc-46fd-8369-010a08312465",
+      "name": "Chẹck order status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "vehicles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.assigned_vehicle_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2272,
+        496
+      ],
+      "id": "240e0a0c-3c60-42aa-b240-f29d84cdc339",
+      "name": "check vehicle status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7a55454-93f8-4432-86aa-70daea0aa769",
+              "leftValue": "={{ $json.capacity_current_percent }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2480,
+        240
+      ],
+      "id": "1f91e495-a1d9-4e0c-8e91-db903bdd8307",
+      "name": "Check condition"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "in_transit"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "busy"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2992,
+        336
+      ],
+      "id": "6ef0f691-6546-4269-a28c-8583f0ff177b",
+      "name": "upadate status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get list drivers').item.json.email }}",
+        "subject": "=[VietExpress] Lệnh vận chuyển  ",
+        "message": "==<!DOCTYPE html>\n<html>\n  <body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #222;\">\n    <h3>VietExpress – Thông báo điều phối vận chuyển</h3>\n\n    <p>Xin chào <strong>{{ $items('choose a driver').item.json.assignedDriverName }}</strong>,</p>\n\n    <p>Bạn được phân công vận chuyển đơn hàng:</p>\n\n    <ul>\n      <li><strong>Mã đơn:</strong> {{ $items('Get order info').item.json.order_code || $items('choose a driver').item.json.orderId }}</li>\n      <li><strong>Dịch vụ:</strong> {{ $items('choose a driver').item.json.serviceType }}</li>\n      <li><strong>Tải trọng:</strong> {{ $items('choose a driver').item.json.weightKg }} kg</li>\n      <li><strong>Điểm lấy:</strong> {{ $items('choose a driver').item.json.origin }}</li>\n      <li><strong>Điểm giao:</strong> {{ $items('choose a driver').item.json.destination }}</li>\n      <li><strong>Xe:</strong> {{ $items('choose vehicle').item.json.vehicleType }} – Biển số {{ $items('choose vehicle').item.json.plateNumber }}</li>\n    </ul>\n\n    <p>\n      <strong>Quãng đường:</strong> {{ $items('Route & ETA').item.json.distanceKm }} km<br/>\n      <strong>ETA:</strong> {{ $items('Route & ETA').item.json.durationHours }} giờ\n    </p>\n\n    <p><strong>Lưu ý:</strong> {{ $items('choose a driver').item.json.notes || 'Không có ghi chú.' }}</p>\n\n    <p>Vui lòng xác nhận nhận lệnh và bắt đầu điều phối đúng thời gian.</p>\n\n    <p>Trân trọng,<br/>VietExpress Logistics</p>\n  </body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        528
+      ],
+      "id": "5f021b90-78ae-4e83-b153-b69703e09102",
+      "name": "Send a notification to driver",
+      "webhookId": "57d0b1eb-1c47-46ae-bc8a-9be9e747f372",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JyeLeQrdVeBG2B1G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.orderId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assigned_driver_name",
+              "fieldValue": "={{ $json.assignedDriverName }}"
+            },
+            {
+              "fieldId": "assigned_driver_id",
+              "fieldValue": "={{ $json.assignedDriverId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        640
+      ],
+      "id": "025011e8-e01b-454a-999f-3ea19467fe26",
+      "name": "Update driver_info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.orderId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assigned_vehicle_id",
+              "fieldValue": "={{ $json.assignedVehicleId }}"
+            },
+            {
+              "fieldId": "plate_number",
+              "fieldValue": "={{ $json.plateNumber }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        720,
+        16
+      ],
+      "id": "519c266b-0b1b-4185-83be-086170852ebf",
+      "name": "Update vehicle_info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "vehicles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.selectedVehicle.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "capacity_available",
+              "fieldValue": "={{ $json.capacityRemaining }}"
+            },
+            {
+              "fieldId": "capacity_current_percent",
+              "fieldValue": "={{ $json.capacityFillPercent }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        160
+      ],
+      "id": "66883528-3798-4620-88a7-53e4d273cfbd",
+      "name": "Update capacity vehicle info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.orderId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assigned_vehicle_id",
+              "fieldValue": "={{ $('Get vehicle info').item.json.id }}"
+            },
+            {
+              "fieldId": "plate_number",
+              "fieldValue": "={{ $('Get vehicle info').item.json.plate_number }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        -336
+      ],
+      "id": "7299655d-4263-4e8c-aaad-a602345c801d",
+      "name": "Update vehicle info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.orderId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assigned_driver_id",
+              "fieldValue": "={{ $json.assignedDriverId }}"
+            },
+            {
+              "fieldId": "assigned_driver_name",
+              "fieldValue": "={{ $json.assignedDriverName }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        -352
+      ],
+      "id": "ea27c3cc-ddad-445f-a976-8850e6112594",
+      "name": "Update driver info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Order Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Order Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Order Intake": {
+      "main": [
+        [
+          {
+            "node": "AI classify cargo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Vehicle": {
+      "main": [
+        [
+          {
+            "node": "Get driver info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update vehicle info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Driver": {
+      "main": [
+        [
+          {
+            "node": "Update driver info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send notification to driver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route & ETA": {
+      "main": [
+        [
+          {
+            "node": "Chẹck order status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI classify cargo",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get vehicle info": {
+      "main": [
+        [
+          {
+            "node": "Select Vehicle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get driver info": {
+      "main": [
+        [
+          {
+            "node": "Assign Driver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "classify": {
+      "main": [
+        [
+          {
+            "node": "Get list vehicles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "choose vehicle": {
+      "main": [
+        [
+          {
+            "node": "Get list drivers",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update vehicle_info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update capacity vehicle info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI classify cargo": {
+      "main": [
+        [
+          {
+            "node": "Parse output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse output": {
+      "main": [
+        [
+          {
+            "node": "Get vehicle info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send notification to driver": {
+      "main": [
+        []
+      ]
+    },
+    "Geo origin": {
+      "main": [
+        [
+          {
+            "node": "Geo destination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geo destination": {
+      "main": [
+        [
+          {
+            "node": "Get distance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get distance": {
+      "main": [
+        [
+          {
+            "node": "Route & ETA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm pick up Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get order info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get order info": {
+      "main": [
+        [
+          {
+            "node": "classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get list vehicles": {
+      "main": [
+        [
+          {
+            "node": "choose vehicle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get list drivers": {
+      "main": [
+        [
+          {
+            "node": "choose a driver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "choose a driver": {
+      "main": [
+        [
+          {
+            "node": "Geo origin",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update driver_info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chẹck order status": {
+      "main": [
+        [
+          {
+            "node": "check vehicle status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check vehicle status": {
+      "main": [
+        [
+          {
+            "node": "Check condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check condition": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send a notification to driver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upadate status": {
+      "main": [
+        []
+      ]
+    },
+    "Send a notification to driver": {
+      "main": [
+        [
+          {
+            "node": "upadate status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update vehicle_info": {
+      "main": [
+        []
+      ]
+    },
+    "Update vehicle info": {
+      "main": [
+        []
+      ]
+    },
+    "Update driver info": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "74eefdb5-c526-4fe7-a5c0-5b6650be0c03",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ef622c93a68ceb2a9ce8a4595d6557c99ccab97fef24ed99bef0d88601f1cb84"
+  },
+  "id": "IH8UVa7GcHdKFTWR",
+  "tags": []
+}

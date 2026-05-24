@@ -1,0 +1,539 @@
+{
+  "name": "Quote_automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quote-request",
+        "options": {
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "id": "6e044d59-0ab9-429c-a963-321b6e29c1bf",
+      "name": "Quote Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -5712,
+        3136
+      ],
+      "webhookId": "01c2efed-836c-4c90-b586-6ee94e268318"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d178a020-4b01-499a-af47-41b1b6a39c48",
+              "leftValue": "={{ $json.duplicate }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "id": "5b704f8d-911f-47f7-975e-9beb0531c284",
+      "name": "Already Processed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -5040,
+        3136
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ==================== VIETEXPRESS PRICE CALCULATOR ====================\n// Dựa trên bảng giá tham khảo nội bộ ngày 26/04/2026\n// Đầu ra: quoted_price, price_breakdown, suggested_surcharges, final_suggested_price, pricing_reasoning, Price_Base\n\nconst checkNode = $node[\"Check duplicate\"];\nif (!checkNode?.json?.newRow) {\n  throw new Error('Không tìm thấy dữ liệu từ node \"Check duplicate\"');\n}\nconst item = checkNode.json.newRow || {};\n\n// ---------- Helper functions ----------\nfunction toStr(v) {\n  return v == null ? '' : String(v).trim();\n}\nfunction toNum(v, def = 0) {\n  const n = parseFloat(toStr(v));\n  return isNaN(n) ? def : n;\n}\n\n// Chuẩn hoá tên tỉnh (loại bỏ dấu chấm, dấu cách thừa)\nfunction normalizeProv(p) {\n  return toStr(p).toLowerCase().replace(/\\./g, '').normalize('NFC');\n}\n\n// --------------------- ĐỊNH NGHĨA VÙNG THEO BẢNG GIÁ ---------------------\n// Vùng 3: từ Hà Tĩnh trở ra Bắc\n// Vùng 2: từ Quảng Ngãi đến Quảng Trị (miền Trung)\n// Vùng 1: từ Gia Lai trở vào Nam\n// Dựa vào danh sách các tỉnh điển hình (có thể mở rộng)\nconst regionNorth = new Set([\n  'hà nội', 'hanoi', 'hải phòng', 'hai phong', 'quảng ninh', 'quang ninh',\n  'bắc ninh', 'bac ninh', 'hưng yên', 'hung yen', 'hải dương', 'hai duong',\n  'thái bình', 'thai binh', 'nam định', 'nam dinh', 'ninh bình', 'ninh binh',\n  'hà nam', 'ha nam', 'hòa bình', 'hoa binh', 'sơn la', 'son la', 'điện biên', 'dien bien',\n  'lai châu', 'lai chau', 'lào cai', 'lao cai', 'yên bái', 'yen bai', 'tuyên quang', 'tuyen quang',\n  'phú thọ', 'phu tho', 'vĩnh phúc', 'vinh phuc', 'bắc giang', 'bac giang', 'lạng sơn', 'lang son',\n  'cao bằng', 'cao bang', 'bắc kạn', 'bac kan', 'thái nguyên', 'thai nguyen', 'hà tĩnh', 'ha tinh'\n]);\n\nconst regionCentral = new Set([\n  'quảng bình', 'quang binh', 'quảng trị', 'quang tri', 'thừa thiên huế', 'thua thien hue', 'huế', 'hue',\n  'đà nẵng', 'da nang', 'quảng nam', 'quang nam', 'quảng ngãi', 'quang ngai', 'bình định', 'binh dinh',\n  'phú yên', 'phu yen', 'khánh hòa', 'khanh hoa', 'ninh thuận', 'ninh thuan', 'bình thuận', 'binh thuan'\n]);\n\nconst regionSouth = new Set([\n  'gia lai', 'gialai', 'kon tum', 'kontum', 'đắk lắk', 'dak lak', 'đắk nông', 'dak nong', 'lâm đồng', 'lam dong',\n  'tp.hcm', 'tp hcm', 'tp hồ chí minh', 'hồ chí minh', 'ho chi minh', 'bình dương', 'binh duong',\n  'đồng nai', 'dong nai', 'bà rịa vũng tàu', 'ba ria vung tau', 'tây ninh', 'tay ninh',\n  'bình phước', 'binh phuoc', 'long an', 'long an', 'tiền giang', 'tien giang', 'bến tre', 'ben tre',\n  'vĩnh long', 'vinh long', 'trà vinh', 'tra vinh', 'hậu giang', 'hau giang', 'sóc trăng', 'soc trang',\n  'đồng tháp', 'dong thap', 'an giang', 'an giang', 'kiên giang', 'kien giang', 'cà mau', 'ca mau',\n  'bạc liêu', 'bac lieu', 'cần thơ', 'can tho'\n]);\n\nfunction getRegion(province) {\n  const norm = normalizeProv(province);\n  if (regionNorth.has(norm)) return 'Bắc';   // Vùng 3\n  if (regionCentral.has(norm)) return 'Trung'; // Vùng 2\n  if (regionSouth.has(norm)) return 'Nam';    // Vùng 1\n  // fallback heuristic\n  if (/^(hải|hà|hưng|thái|nam|ninh|bắc|cao|lạng|tuyên|phú|vĩnh|yên)/i.test(norm)) return 'Bắc';\n  if (/^(quảng|huế|đà|bình|phú|khánh|ninh|thuận)/i.test(norm)) return 'Trung';\n  return 'Nam';\n}\n\n// Phân loại tuyến đường\nfunction classifyRoute(origin, dest) {\n  if (!origin || !dest) return { label: 'Không xác định', key: 'unknown' };\n  const oNorm = normalizeProv(origin);\n  const dNorm = normalizeProv(dest);\n  if (oNorm === dNorm) return { label: 'Nội tỉnh', key: 'noi_tinh' };\n  const regO = getRegion(origin);\n  const regD = getRegion(dest);\n  if (regO === regD) return { label: 'Nội vùng', key: 'noi_vung' };\n  const pair = [regO, regD].sort().join('-');\n  // Liên vùng: Bắc-Trung hoặc Trung-Nam\n  if (pair === 'Bắc-Trung' || pair === 'Nam-Trung') return { label: 'Liên vùng', key: 'lien_vung' };\n  // Liên tỉnh: Bắc-Nam\n  return { label: 'Liên tỉnh', key: 'lien_tinh' };\n}\n\n// Trọng lượng thể tích\nfunction getVolumetricWeight(dimStr) {\n  if (!dimStr) return 0;\n  const parts = dimStr.split('x').map(p => parseFloat(p.trim()));\n  if (parts.length !== 3 || parts.some(isNaN)) return 0;\n  const [d, w, h] = parts;\n  return (d * w * h) / 5000;\n}\n\n// Làm tròn theo dịch vụ\nfunction roundChargeable(w, svc) {\n  if (svc === 'ltl' || svc === 'express') return Math.ceil(w * 2) / 2; // bước 0.5kg\n  return Math.ceil(w); // bước 1kg\n}\n\n// Lấy khoảng cách (km)\nlet distanceKm = null;\ntry {\n  const parsedDist = $node[\"Parse output Get Distance\"]?.json;\n  if (parsedDist && typeof parsedDist.distanceKm === 'number') distanceKm = parsedDist.distanceKm;\n  else {\n    const raw = $node[\"Get Distance\"]?.json;\n    const seg = raw?.features?.[0]?.properties?.segments?.[0];\n    if (seg && seg.distance) distanceKm = seg.distance / 1000;\n  }\n} catch(e) { distanceKm = null; }\nif (!distanceKm || isNaN(distanceKm)) distanceKm = 150; // mặc định\n\n// ---------- Đọc dữ liệu đầu vào ----------\nconst serviceType = toStr(item.service_type).toLowerCase();\nconst actualWeight = toNum(item.weight);\nconst dimensions = toStr(item.dimensions);\nconst origin = toStr(item.origin);\nconst destination = toStr(item.destination);\n\n// Tính trọng lượng tính cước\nconst volWeight = getVolumetricWeight(dimensions);\nlet chargeable = Math.max(actualWeight, volWeight);\nchargeable = roundChargeable(chargeable, serviceType);\n\nconst route = classifyRoute(origin, destination);\n// Key pricing: 'noi_tinh', 'noi_vung' (nội miền), 'lien_vung' (liên miền) – dùng cho LTL/Express\nfunction pricingKeyForRoute(routeKey) {\n  if (routeKey === 'noi_tinh') return 'noi_tinh';\n  if (routeKey === 'noi_vung') return 'noi_vung';\n  // liên vùng + liên tỉnh đều dùng bảng \"liên miền\"\n  return 'lien_vung';\n}\nconst pricingKey = pricingKeyForRoute(route.key);\n\n// ---------- BẢNG GIÁ ----------\nconst LTL_TABLE = {\n  '0-2': { noi_tinh: 28000, noi_vung: 36000, lien_vung: 52000 },\n  '2-5': { noi_tinh: 40000, noi_vung: 55000, lien_vung: 78000 },\n  '5-10': { noi_tinh: 62000, noi_vung: 84000, lien_vung: 118000 },\n  '10-20': { noi_tinh: 95000, noi_vung: 130000, lien_vung: 180000 }\n};\nconst LTL_EXTRA = { noi_tinh: 7500, noi_vung: 9500, lien_vung: 12500 };\n\nconst EXPRESS_TABLE = {\n  '0-2': { noi_tinh: 45000, noi_vung: 65000, lien_vung: 95000 },\n  '2-5': { noi_tinh: 65000, noi_vung: 95000, lien_vung: 138000 },\n  '5-10': { noi_tinh: 95000, noi_vung: 140000, lien_vung: 205000 },\n  '10-20': { noi_tinh: 145000, noi_vung: 210000, lien_vung: 310000 }\n};\nconst EXPRESS_EXTRA = { noi_tinh: 12000, noi_vung: 15000, lien_vung: 20000 };\n\n// FTL: chọn xe theo tải trọng (kg)\nfunction pickVehicle(weightKg) {\n  if (weightKg <= 1000) return { opening: 350000, perKm: 11000, name: 'Xe 1 tấn' };\n  if (weightKg <= 1500) return { opening: 500000, perKm: 14000, name: 'Xe 1.5 tấn' };\n  if (weightKg <= 2500) return { opening: 700000, perKm: 17000, name: 'Xe 2.5 tấn' };\n  return { opening: 1150000, perKm: 22000, name: 'Xe 5 tấn' };\n}\n\n// ---------- TÍNH GIÁ CƠ BẢN (Price_Base) ----------\nlet Price_Base = 0;\nlet breakdown = { service: serviceType, chargeable_kg: chargeable, route: route.label };\nlet vehicleInfo = null;\n\nif (serviceType === 'ltl') {\n  let base = 0;\n  if (chargeable <= 2) base = LTL_TABLE['0-2'][pricingKey];\n  else if (chargeable <= 5) base = LTL_TABLE['2-5'][pricingKey];\n  else if (chargeable <= 10) base = LTL_TABLE['5-10'][pricingKey];\n  else if (chargeable <= 20) base = LTL_TABLE['10-20'][pricingKey];\n  else base = LTL_TABLE['10-20'][pricingKey] + (chargeable - 20) * LTL_EXTRA[pricingKey];\n  Price_Base = Math.round(base);\n  breakdown.table = 'LTL';\n} \nelse if (serviceType === 'express') {\n  let base = 0;\n  if (chargeable <= 2) base = EXPRESS_TABLE['0-2'][pricingKey];\n  else if (chargeable <= 5) base = EXPRESS_TABLE['2-5'][pricingKey];\n  else if (chargeable <= 10) base = EXPRESS_TABLE['5-10'][pricingKey];\n  else if (chargeable <= 20) base = EXPRESS_TABLE['10-20'][pricingKey];\n  else base = EXPRESS_TABLE['10-20'][pricingKey] + (chargeable - 20) * EXPRESS_EXTRA[pricingKey];\n  Price_Base = Math.round(base);\n  breakdown.table = 'EXPRESS';\n}\nelse if (serviceType === 'ftl') {\n  const vehicle = pickVehicle(chargeable);\n  vehicleInfo = vehicle;\n  const minKm = (route.key === 'noi_tinh') ? 15 : 30;\n  const km = Math.max(distanceKm, minKm);\n  const price = vehicle.opening + km * vehicle.perKm;\n  Price_Base = Math.round(price);\n  breakdown.table = 'FTL';\n  breakdown.vehicle = vehicle.name;\n  breakdown.km = km;\n}\nelse if (serviceType === 'cold') {\n  const vehicle = pickVehicle(chargeable);\n  vehicleInfo = vehicle;\n  const minKm = (route.key === 'noi_tinh') ? 15 : 30;\n  const km = Math.max(distanceKm, minKm);\n  const baseFTL = vehicle.opening + km * vehicle.perKm;\n  // Mặc định nhiệt độ 2-8°C => hệ số 1.30 (có thể đọc từ item.cold_temp nếu có)\n  const tempFactor = 1.30;\n  const coldSurcharge = (km < 150) ? 180000 : 350000;\n  const price = baseFTL * tempFactor + coldSurcharge;\n  Price_Base = Math.round(price);\n  breakdown.table = 'COLD';\n  breakdown.vehicle = vehicle.name;\n  breakdown.km = km;\n  breakdown.temp_factor = tempFactor;\n  breakdown.cold_surcharge = coldSurcharge;\n}\nelse if (serviceType === '3pl') {\n  // Theo bảng 3.5: nhập kho 3000/kg + picking 2500 + packing 8000\n  const storage = chargeable * 3000;\n  const picking = 2500;\n  const packing = 8000;\n  Price_Base = Math.round(storage + picking + packing);\n  breakdown.table = '3PL';\n}\nelse if (serviceType === 'doc') {\n  // Giá tư vấn bộ chứng từ cơ bản\n  Price_Base = 120000;\n  breakdown.table = 'DOC';\n}\nelse {\n  Price_Base = 0;\n  breakdown.error = 'Dịch vụ không hỗ trợ';\n}\n\n// ---------- TÍNH PHỤ PHÍ (surcharges) ----------\n// Đọc các flag từ item (có thể có hoặc không)\nconst codValue = toNum(item.cod_value);\nconst isRemote = toStr(item.remote_area) === 'true' || item.remote_area === true;\nconst isFragile = toStr(item.fragile) === 'true' || item.fragile === true;\nconst isAfterHours = toStr(item.after_hours) === 'true' || item.after_hours === true;\nconst isWeekendHoliday = toStr(item.weekend_holiday) === 'true' || item.weekend_holiday === true;\nconst liftTruckHours = toNum(item.lift_truck_hours);\nconst monthlyOrders = toNum(item.monthly_orders); // dùng cho chiết khấu\n\nlet surcharges = {\n  cod_fee: 0,\n  remote_surcharge: 0,\n  fragile_surcharge: 0,\n  after_hours_surcharge: 0,\n  weekend_holiday_surcharge: 0,\n  lift_truck_fee: 0,\n  discount: 0\n};\n\n// 1. Phí COD: 0.8% giá trị COD, tối thiểu 15,000\nif (codValue > 0) {\n  surcharges.cod_fee = Math.max(codValue * 0.008, 15000);\n}\n\n// 2. Khu vực khó giao: +10% đến +20% cước cơ bản (lấy 15% làm mặc định)\nif (isRemote) {\n  surcharges.remote_surcharge = Math.round(Price_Base * 0.15);\n}\n\n// 3. Hàng dễ vỡ: +35,000 đến 120,000 (lấy 70,000 mặc định)\nif (isFragile) {\n  surcharges.fragile_surcharge = 70000;\n}\n\n// 4. Giao ngoài giờ (sau 20:00): +80,000\nif (isAfterHours) {\n  surcharges.after_hours_surcharge = 80000;\n}\n\n// 5. Giao cuối tuần/ngày lễ: +15% cước cơ bản\nif (isWeekendHoliday) {\n  surcharges.weekend_holiday_surcharge = Math.round(Price_Base * 0.15);\n}\n\n// 6. Nâng/hạ bằng xe nâng: 250,000/giờ\nif (liftTruckHours > 0) {\n  surcharges.lift_truck_fee = Math.round(250000 * liftTruckHours);\n}\n\n// 7. Chiết khấu theo sản lượng tháng\nlet discountPercent = 0;\nif (monthlyOrders >= 500) discountPercent = 0.10;\nelse if (monthlyOrders >= 200) discountPercent = 0.06;\nelse if (monthlyOrders >= 50) discountPercent = 0.03;\nsurcharges.discount = -Math.round(Price_Base * discountPercent);\n\n// Tổng phụ phí (cộng dồn, discount là số âm)\nlet totalSurcharges = 0;\nfor (let key in surcharges) {\n  if (key !== 'discount') totalSurcharges += surcharges[key];\n}\ntotalSurcharges += surcharges.discount; // discount âm\n\nconst final_suggested_price = Math.max(0, Price_Base + totalSurcharges);\n\n// Xây dựng pricing_reasoning\nconst reasoningLines = [];\nreasoningLines.push(`Dịch vụ: ${serviceType.toUpperCase()}`);\nreasoningLines.push(`Trọng lượng tính cước: ${chargeable} kg (thực tế ${actualWeight} kg, thể tích ${volWeight.toFixed(2)} kg)`);\nreasoningLines.push(`Tuyến: ${route.label} (${origin} → ${destination}) → dùng bảng ${pricingKey === 'lien_vung' ? 'liên miền' : pricingKey}`);\nreasoningLines.push(`Giá cơ bản (Price_Base): ${Price_Base.toLocaleString()} VND`);\nif (surcharges.cod_fee > 0) reasoningLines.push(`+ Phí COD (0.8%): ${Math.round(surcharges.cod_fee).toLocaleString()} VND`);\nif (surcharges.remote_surcharge > 0) reasoningLines.push(`+ Phụ phí khu vực khó giao: ${surcharges.remote_surcharge.toLocaleString()} VND`);\nif (surcharges.fragile_surcharge > 0) reasoningLines.push(`+ Hàng dễ vỡ: ${surcharges.fragile_surcharge.toLocaleString()} VND`);\nif (surcharges.after_hours_surcharge > 0) reasoningLines.push(`+ Giao ngoài giờ: ${surcharges.after_hours_surcharge.toLocaleString()} VND`);\nif (surcharges.weekend_holiday_surcharge > 0) reasoningLines.push(`+ Giao cuối tuần/lễ: ${surcharges.weekend_holiday_surcharge.toLocaleString()} VND`);\nif (surcharges.lift_truck_fee > 0) reasoningLines.push(`+ Xe nâng (${liftTruckHours}h): ${surcharges.lift_truck_fee.toLocaleString()} VND`);\nif (discountPercent > 0) reasoningLines.push(`- Chiết khấu ${discountPercent*100}%: ${(-surcharges.discount).toLocaleString()} VND`);\nreasoningLines.push(`Tổng phụ phí: ${totalSurcharges.toLocaleString()} VND`);\nreasoningLines.push(`Giá đề xuất cuối cùng: ${final_suggested_price.toLocaleString()} VND (chưa VAT)`);\n\nconst pricing_reasoning = reasoningLines.join('\\n');\n\n// ---------- TRẢ VỀ KẾT QUẢ ----------\nconst output = {\n  ...item,\n  quoted_price: final_suggested_price,          // giá cuối cùng (bao gồm phụ phí và chiết khấu)\n  price_breakdown: breakdown,\n  suggested_surcharges: surcharges,\n  final_suggested_price: final_suggested_price,\n  pricing_reasoning: pricing_reasoning,\n  Price_Base: Price_Base,                       // giá cơ bản trước phụ phí\n  chargeable_weight: chargeable,\n  distance_km: distanceKm,\n  route_classification: {\n    label: route.label,\n    key: route.key,\n    pricingKey: pricingKey\n  }\n};\n\nreturn output;"
+      },
+      "id": "df0e5311-e3cc-4d31-9530-fc030c3a06b4",
+      "name": "Calculate Reference Price",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4272,
+        3296
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "operation": "get",
+        "tableId": "quote_requests",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "service_type",
+              "keyValue": "={{ $json.body.request.serviceType }}"
+            },
+            {
+              "keyName": "origin",
+              "keyValue": "={{ $json.body.request.origin }}"
+            },
+            {
+              "keyName": "destination",
+              "keyValue": "={{ $json.body.request.destination }}"
+            },
+            {
+              "keyName": "weight",
+              "keyValue": "={{ $json.body.request.weight }}"
+            },
+            {
+              "keyName": "dimensions",
+              "keyValue": "={{ $json.body.request.dimensions }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -5472,
+        3136
+      ],
+      "id": "0cc7278f-f69c-4a76-b66f-490a63f095a1",
+      "name": "Get a row",
+      "alwaysOutputData": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chạy ở chế độ \"Run Once for All Items\"\nconst allInputs = $input.all();\n\nif (allInputs.length < 2) {\n  // Không đủ dữ liệu (cần ít nhất 1 từ webhook + 1 từ DB)\n  return {\n    duplicate: false,\n    newRow: allInputs[0]?.json || null,\n    oldRows: []\n  };\n}\n\n// Row mới từ webhook (phần tử đầu tiên)\nconst newRow = allInputs[0].json;\n\n// Các row cũ từ database (từ phần tử thứ 2 trở đi)\nconst oldRows = allInputs.slice(1).map(item => item.json);\n\n// Hàm tạo fingerprint từ các trường cần so sánh\nfunction getFingerprint(row) {\n  const fields = ['service_type', 'origin', 'destination', 'weight', 'dimensions', 'customer_name','customer_phone','customer_email'];\n  return fields.map(field => {\n    let value = row[field];\n    if (value === null || value === undefined) value = '';\n    return String(value).trim().toLowerCase();\n  }).join('|');\n}\n\nconst newFingerprint = getFingerprint(newRow);\nconst isDuplicate = oldRows.some(oldRow => getFingerprint(oldRow) === newFingerprint);\n\n// Trả về kết quả kèm theo oldRows để xử lý tiếp trong nhánh false\nreturn {\n  duplicate: isDuplicate,\n  newRow: newRow,\n  oldRows: oldRows   // <- đây là toàn bộ row của Get a row\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5264,
+        3136
+      ],
+      "id": "1681f042-4d34-4954-8b4e-2174cf1a2abd",
+      "name": "Check duplicate"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -4080,
+        3488
+      ],
+      "id": "3a24a881-e9ef-40cf-91a6-7d5e5a897ea3",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "pyEQTjsLEUnskbpk",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node – chạy chế độ \"Run Once for Each Item\"\nconst item = $input.first().json;\n\n// Parse an toàn chuỗi JSON\nlet parsed = null;\ntry {\n    // Xử lý escape ký tự\n    const cleaned = item.output.replace(/\\\\n/g, '\\n').replace(/\\\\\"/g, '\"');\n    parsed = JSON.parse(cleaned);\n} catch (err) {\n    parsed = { error: `Parse failed: ${err.message}`, raw: item.output };\n}\n\n// Trả về object đã parse (clean)\nreturn parsed;"
+      },
+      "id": "c9194aca-56df-4db6-a13d-8dc25477871a",
+      "name": "Parse AI Suggestion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3776,
+        3296
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là AI hỗ trợ báo giá logistics cho công ty VietExpress.\n\nNhiệm vụ:\nPhân tích thông tin đơn hàng và gợi ý các phụ phí hợp lý dựa trên điều kiện vận chuyển thực tế.\n\nChỉ gợi ý phụ phí nếu thực sự cần thiết.\nKhông tự tạo phụ phí vô lý.\nKhông thay đổi giá cơ bản (Price_Base).\n\nThông tin đơn hàng:\n{{ JSON.stringify($json, null, 2) }}\n\nCác loại phụ phí được phép gợi ý:\n\n1. difficult_area\n- Khu vực khó giao / xa trung tâm / hạn chế tải\n- Mức đề xuất:\n  - 10%\n  - 15%\n  - 20%\n\n2. fragile_goods\n- Hàng dễ vỡ / cần đóng gói đặc biệt\n- Mức đề xuất:\n  - 35000\n  - 60000\n  - 120000\n\n3. after_hours\n- Giao ngoài giờ sau 20h\n- Mức đề xuất:\n  - 80000\n\n4. weekend_holiday\n- Giao cuối tuần / ngày lễ\n- Mức đề xuất:\n  - 15% cước cơ bản\n\n5. cod_fee\n- Thu hộ COD\n- Công thức:\n  max(COD * 0.8%, 15000)\n\n6. forklift\n- Cần xe nâng / nâng hạ\n- Mức đề xuất:\n  - 250000 mỗi giờ\n\nYêu cầu output:\n- Chỉ trả về JSON hợp lệ\n- Không markdown\n- Không giải thích dài dòng\n- Không dùng text ngoài JSON\n\nFormat:\n\n{\n  \"suggested_surcharges\": [\n    {\n      \"type\": \"fragile_goods\",\n      \"amount\": 60000,\n      \"reason\": \"Hàng điện tử cần chống sốc\"\n    }\n  ],\n  \"total_suggested_surcharge\": 60000,\n  \"risk_level\": \"low\",\n  \"pricing_notes\": [\n    \"Có thể cần đóng gói chống sốc\",\n    \"Nên xác nhận thời gian giao\"\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -4080,
+        3296
+      ],
+      "id": "4fba01b2-6aec-4e06-adbe-893887a2a3d3",
+      "name": "AI suggestion"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "quote_requests",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get a row').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "final_suggested_price",
+              "fieldValue": "={{ $json.final_price }}"
+            },
+            {
+              "fieldId": "suggested_surcharges",
+              "fieldValue": "={{ $json.ai_total_surcharge }}"
+            },
+            {
+              "fieldId": "pricing_reasoning",
+              "fieldValue": "={{ $json.ai_suggested_surcharges[0].reason }}"
+            },
+            {
+              "fieldId": "Price_Base",
+              "fieldValue": "={{ $('Calculate Reference Price').item.json.Price_Base }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3344,
+        3296
+      ],
+      "id": "53dde130-43a1-4616-b15f-117562fed7ef",
+      "name": "Update a row",
+      "alwaysOutputData": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quote-approval",
+        "options": {}
+      },
+      "id": "99bc26c6-0ae6-4b7a-9a54-3993c621e189",
+      "name": "Quote Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -5712,
+        3376
+      ],
+      "webhookId": "7a6c11b8-5a8b-4c7b-a7d5-92b5b6d3d1cb"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lấy item đầu tiên từ input (vì webhook trả về mảng 1 phần tử)\nconst item = $input.first().json;\n\n// Dữ liệu nằm trong item.body\nconst body = item.body;\n\n// Tạo object đơn giản chứa các thông tin cần thiết\nconst output = {\n  // Thông tin báo giá\n  quoteId: body.quoteId,\n  quoteCode: body.quoteCode,\n  status: body.status,\n  quotedPrice: body.quotedPrice,\n  approvedAt: body.approvedAt,\n  message: body.message,\n\n  // Thông tin khách hàng\n  customer: {\n    fullName: body.customer.fullName,\n    phone: body.customer.phone,\n    email: body.customer.email,\n    company: body.customer.company\n  },\n\n  // Thông tin đơn hàng\n  quote: {\n    serviceType: body.quote.serviceType,\n    origin: body.quote.origin,\n    destination: body.quote.destination,\n    weight: body.quote.weight,\n    dimensions: body.quote.dimensions,\n    note: body.quote.note\n  },\n\n  // Định dạng giá tiền cho dễ đọc (ví dụ: 250.000 VND)\n  formattedPrice: new Intl.NumberFormat('vi-VN').format(body.quotedPrice) + ' VND',\n\n  // Định dạng ngày giờ duyệt\n  formattedApprovedAt: new Date(body.approvedAt).toLocaleString('vi-VN')\n};\n\n// Trả về object này để các node tiếp theo sử dụng\nreturn output;"
+      },
+      "id": "4c48f0f1-fa2b-4269-98f7-1e35d6c9fc21",
+      "name": "Build Approval Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5472,
+        3376
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=jiuka13c@gmail.com",
+        "subject": "=VietExpress: Báo giá vận chuyển cho quý khách {{ $json.customer.fullName }} ",
+        "message": "=<!DOCTYPE html> <html> <head>   <meta charset=\"UTF-8\">   <style>     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }     .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }     .header { background-color: #004b8f; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }     .content { padding: 20px; }     .price { font-size: 24px; font-weight: bold; color: #d32f2f; }     .table { width: 100%; border-collapse: collapse; margin: 15px 0; }     .table td, .table th { border: 1px solid #ddd; padding: 8px; vertical-align: top; }     .table th { background-color: #f2f2f2; text-align: left; }     .footer { margin-top: 20px; font-size: 12px; color: #777; text-align: center; }     .button { background-color: #004b8f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; }   </style> </head> <body> <div class=\"container\">   <div class=\"header\">     <h2>VietExpress – Báo giá vận chuyển</h2>   </div>   <div class=\"content\">     <p>Kính gửi khách hàng  <strong>{{ $json.customer.fullName }}</strong> ({{ $json.customer.company }}),</p>     <p>Cảm ơn quý khách đã tin tưởng sử dụng dịch vụ của VietExpress. Dựa trên yêu cầu báo giá của quý khách, chúng tôi xin gửi mức giá đề xuất như sau:</p>      <table class=\"table\">       <tr><th>Mã báo giá</th><td>{{ $json.quoteCode }}</td></tr>       <tr><th>Dịch vụ</th><td> {{ $json.quote.serviceType }} ({{ $json.quote.serviceType }})</td></tr>       <tr><th>Tuyến vận chuyển</th><td>{{ $json.quote.origin }} → {{ $json.quote.destination }}</td></tr>       <tr><th>Trọng lượng</th><td>{{$json.quote.weight}}</td></tr>       <tr><th>Kích thước</th><td>{{$json.quote.dimensions}}</td></tr>       <tr><th>Ghi chú</th><td>{{$json.quote.note}}</td></tr>       <tr><th>Giá đề xuất</th><td class=\"price\">{{$json.formattedPrice}}</td></tr>     </table>      <p>Mức giá trên đã bao gồm VAT (nếu có) và các phụ phí cơ bản. Nếu quý khách đồng ý với báo giá này, vui lòng phản hồi email hoặc liên hệ hotline <strong>1900 xxxx</strong> để xác nhận đơn hàng.</p>      <p>Trân trọng,<br>     <strong>VietExpress Logistics</strong><br>     Email: support@vietexpress.vn \n Hotline: 1900 xxxx</p>   </div>   <div class=\"footer\">     Email này được gửi tự động từ hệ thống báo giá của VietExpress. Vui lòng không trả lời trực tiếp email này.   </div> </div> </body> </html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -5184,
+        3376
+      ],
+      "id": "1144c4ab-43d3-4d1e-8899-0b9af7c5e1d8",
+      "name": "Send a message",
+      "webhookId": "f524b3f4-e60c-4273-8c9d-422e947852a9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JyeLeQrdVeBG2B1G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opencagedata.com/geocode/v1/json?q={{ $json.newRow.origin }}&key=b933ae59aba34be996ffbb8bddf50acf&limit=1&language=vi&countrycode=vn",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4816,
+        3152
+      ],
+      "id": "a2d8a5c2-b7c9-43e6-8a2a-5d11852c076e",
+      "name": "Geocode Origin"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.opencagedata.com/geocode/v1/json?q={{ $('Already Processed?').item.json.newRow.destination }}&key=b933ae59aba34be996ffbb8bddf50acf&limit=1&language=vi&countrycode=vn",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4912,
+        3392
+      ],
+      "id": "d36e39a5-49f1-481e-9cb8-f33b5e0f9bb9",
+      "name": "Geocode Destination"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openrouteservice.org/v2/directions/driving-car?api_key=eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjQ3Y2NlY2NmMTlhODQzNzY4YWM0Y2RlOGEyYjRkYmY0IiwiaCI6Im11cm11cjY0In0=&start={{ $node[\"Geocode Origin\"].json.results[0].geometry.lng }},{{ $node[\"Geocode Origin\"].json.results[0].geometry.lat }}&end={{ $node[\"Geocode Destination\"].json.results[0].geometry.lng }},{{ $node[\"Geocode Destination\"].json.results[0].geometry.lat }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4736,
+        3392
+      ],
+      "id": "e2aa9626-7a3f-409d-a598-924c2f6a6918",
+      "name": "Get Distance"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.data ? JSON.parse($json.data) : $json;\n\nconst feature = raw.features?.[0];\nconst segment = feature?.properties?.segments?.[0];\nconst summary = feature?.properties?.summary;\n\nconst distanceMeters =\n  summary?.distance ||\n  segment?.distance ||\n  0;\n\nconst durationSeconds =\n  summary?.duration ||\n  segment?.duration ||\n  0;\n\nreturn [\n  {\n    json: {\n      distanceMeters,\n      distanceKm: Number((distanceMeters / 1000).toFixed(1)),\n\n      durationSeconds,\n      durationMinutes: Number((durationSeconds / 60).toFixed(1)),\n      durationHours: Number((durationSeconds / 3600).toFixed(2)),\n\n      routeSummary: {\n        distanceKm: Number((distanceMeters / 1000).toFixed(1)),\n        durationHours: Number((durationSeconds / 3600).toFixed(2)),\n      }\n    }\n  }\n];"
+      },
+      "id": "34ebb9c0-399a-47bd-ab16-6591bbe4904e",
+      "name": "Parse output Get Distance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4496,
+        3296
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// =========================\n// Merge Final Suggested Price\n// =========================\n\n// Lấy data từ node pricing rule-based\nconst pricing =\n  $node[\"Calculate Reference Price\"].json;\n\n// Lấy data AI suggestion đã parse\nconst ai =\n  $json;\n\n// Giá cơ bản từ rule engine\nconst Price_Base =\n  Number(pricing.Price_Base || 0);\n\n// Tổng surcharge AI gợi ý\nconst aiSurcharge =\n  Number(ai.total_suggested_surcharge || 0);\n\n// Final price\nconst final_price =\n  Price_Base + aiSurcharge;\n\n// Merge output\nreturn {\n  ...pricing,\n\n  ai_suggested_surcharges:\n    ai.suggested_surcharges || [],\n\n  ai_total_surcharge:\n    aiSurcharge,\n\n  ai_risk_level:\n    ai.risk_level || \"unknown\",\n\n  ai_pricing_notes:\n    ai.pricing_notes || [],\n\n  final_price,\n\n  final_price_formatted:\n    new Intl.NumberFormat('vi-VN')\n      .format(final_price) + ' VND'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3568,
+        3296
+      ],
+      "id": "d0d4ed8a-4058-41d7-8ae7-ea22090a63c2",
+      "name": "Merge Final Price"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Quote Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Processed?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Geocode Origin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Reference Price": {
+      "main": [
+        [
+          {
+            "node": "AI suggestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Check duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check duplicate": {
+      "main": [
+        [
+          {
+            "node": "Already Processed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI suggestion",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Suggestion": {
+      "main": [
+        [
+          {
+            "node": "Merge Final Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI suggestion": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Suggestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quote Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Approval Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Payload": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode Origin": {
+      "main": [
+        [
+          {
+            "node": "Geocode Destination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode Destination": {
+      "main": [
+        [
+          {
+            "node": "Get Distance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Distance": {
+      "main": [
+        [
+          {
+            "node": "Parse output Get Distance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse output Get Distance": {
+      "main": [
+        [
+          {
+            "node": "Calculate Reference Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Final Price": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8c50b93d-f9ca-49f4-ae67-cbcd4eeebb10",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ef622c93a68ceb2a9ce8a4595d6557c99ccab97fef24ed99bef0d88601f1cb84"
+  },
+  "id": "bhv0j8fSU5nidUik",
+  "tags": []
+}

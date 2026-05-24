@@ -1,0 +1,616 @@
+{
+  "name": "SLA_Monitoring & Predictive Intervention",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "name": "Schedule - Every 60 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1744,
+        304
+      ],
+      "id": "cca74eb2-aa59-4537-abd1-504343df255a"
+    },
+    {
+      "parameters": {
+        "url": "https://viet-express.vercel.app/api/sla-monitoring/at-risk-orders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "__Host-next-auth.csrf-token=141e698800a0ccd7902be6954204d55200d1df4f2864bbe3b65a4149072e1246%7C964b25b4e4599c4fd9bee5721c325d16dd64c34e3981b18fc7beafb682985553; __Secure-next-auth.callback-url=https%3A%2F%2Fviet-express.vercel.app%2Fdang-nhap; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..UwimTf89QEE53j5d.yUZSvsvcK848pAcvhrtCytVjWPM0CU1U57YVW4ly6r-tQ8zSQm63SEFuyVu1z64x4PlD32f9z7lhn4fgxfn_qzg5C85vtz8xwe92dQi1_2AfvHU002dddy-Ibo01MDYeVDxjUX9sgPGvMXTLNfjgLGLo4xi0HI6J4X-HD1mYe7Bi8TlflxTlWlPDCtYRkgEI0lX4lISp703JWSI8OSKXMtwEMyRIMm_44XpkQ90D3qp5mwarZAQTbubw6tHKAr1IloFF4dc0uRzHVX_s2B7pwhCyLHOuugDg.7Z8XNo-CoStH6dQzonOJkg"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch At-Risk Orders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1552,
+        304
+      ],
+      "id": "f0b131f3-d07e-4147-8daf-bfc447c1d4de"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "orders",
+        "options": {}
+      },
+      "name": "Split Orders",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        -1376,
+        304
+      ],
+      "id": "84f18e42-b288-4c1e-8993-df5bdfc6abdf"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d37c0713-e7f2-4a99-8555-853421848ff8",
+              "leftValue": "={{ JSON.stringify($json) }}",
+              "rightValue": "={}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has Recent Intervention?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        304
+      ],
+      "id": "41122d3e-1bce-44a5-8c63-2c541084a78d"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là chuyên gia vận hành logistics và SLA (sử dụng tiếng Việt). Phân tích đơn hàng dưới đây về mức rủi ro SLA và đề xuất can thiệp cụ thể, ngắn gọn, thực thi được.\n\nYêu cầu đầu ra: Trả về JSON (không văn bản khác) với cấu trúc chính xác sau (hãy đảm bảo JSON hợp lệ, tuyệt đối không có lỗi dấu phẩy thừa cuối cùng trong các cặp key-value):\n{\n\"orderId\": \"string\",\n\"userId\": \"string\",\n\"orderCode\": \"string\",\n\"riskSummary\": \"ngắn (1-2 câu)\",\n\"confidence\": 0.0,\n\"reasoning\": \"tóm tắt nguyên nhân (2-4 câu)\",\n\"suggestedActions\": [\n{\n\"action\": \"CALL_CARRIER\" hoặc \"CALL_CUSTOMER\",\n\"details\": { \"orderId\": \"...\", \"reason\": \"...\", \"aiConfidence\": 0.0, \"suggestedRoute\": \"...\" },\n\"urgencyMinutes\": 0\n}\n]\n}\n\nTiêu chí quyết định:\n\nNếu isBreached là true → luôn ưu tiên đề xuất đồng thời CẢ HAI hành động trong mảng \"suggestedActions\" (gồm một đối tượng hành động có \"action\" là \"CALL_CARRIER\" và một đối tượng hành động có \"action\" là \"CALL_CUSTOMER\" để liên hệ song song).\n\nNếu timeToDeadline < -30000 phút (đã quá hạn hơn 20 ngày) → trong mảng \"suggestedActions\" chỉ bắt buộc trả về duy nhất một hành động là \"CALL_CUSTOMER\".\n\nConfidence cao (0.8+) khi dữ liệu hành trình rõ ràng; thấp khi dữ liệu mơ hồ.\n\nDữ liệu order:\n{\n\"orderId\": \"{{ $('Split Orders').item.json.id }}\",\n  \"userId\": \"{{ $json.userId }}\",\n  \"orderCode\": \"{{ $json.orderCode }}\",\n  \"origin\": \"{{ $json.origin }}\",\n  \"destination\": \"{{ $json.destination }}\",\n  \"serviceType\": \"{{ $json.serviceType }}\",\n  \"status\": \"{{ $json.status }}\",\n  \"currentLocation\": \"{{ $json.currentLocation }}\",\n  \"weightKg\": {{ $json.weightKg }},\n  \"totalAmount\": {{ $json.totalAmount }},\n  \"estimatedDelivery\": \"{{ $json.estimatedDelivery }}\",\n  \"createdAt\": \"{{ $json.createdAt }}\",\n  \"updatedAt\": \"{{ $json.updatedAt }}\",\n  \"trackingEvents\": {{ $json.trackingEvents }},\n  \"slaAlerts\": {{ $json.slaAlerts }},\n  \"slaMetrics\": {{ $json.slaMetrics }}\n}\n\nTrả về chỉ JSON hợp lệ, không bọc trong tag ```json, không thêm bất kỳ văn bản giải thích nào khác ngoài chuỗi JSON.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1632,
+        560
+      ],
+      "id": "2de09d27-a0db-49d3-a111-bbbaf3402fd6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        736
+      ],
+      "id": "74486c27-273e-42c8-a643-56e331c8661f",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "pyEQTjsLEUnskbpk",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const items = $input.all();\n  const parsed = [];\n\n  for (const item of items) {\n    try {\n      let outputString = item.json.output || item.json;\n\n      if (typeof outputString === 'object' && outputString !== null) {\n        parsed.push({\n          ...outputString,\n          parseSuccess: true,\n          parsedAt: new Date().toISOString()\n        });\n        continue;\n      }\n\n      if (typeof outputString === 'string') {\n        let cleanString = outputString.trim();\n\n        if (cleanString.startsWith('```json')) {\n          cleanString = cleanString.replace(/^```json\\s*/, '').replace(/\\s*```$/, '');\n        } else if (cleanString.startsWith('```')) {\n          cleanString = cleanString.replace(/^```\\s*/, '').replace(/\\s*```$/, '');\n        }\n\n        const parsedData = JSON.parse(cleanString);\n        parsed.push({\n          ...parsedData,\n          parseSuccess: true,\n          parsedAt: new Date().toISOString()\n        });\n        continue;\n      }\n\n      parsed.push({\n        rawData: outputString,\n        parseSuccess: false,\n        error: 'Unsupported output type',\n        parsedAt: new Date().toISOString()\n      });\n    } catch (itemError) {\n      parsed.push({\n        rawData: item.json.output || item.json,\n        parseSuccess: false,\n        error: itemError.message,\n        parsedAt: new Date().toISOString()\n      });\n    }\n  }\n\n  return parsed.map(item => ({ json: item }));\n} catch (error) {\n  return [{\n    json: {\n      parseSuccess: false,\n      error: error.message,\n      parsedAt: new Date().toISOString()\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        560
+      ],
+      "id": "c729581d-c687-4cb4-966c-54f6cdf59d7a",
+      "name": "Parse output"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "suggestedActions",
+        "options": {}
+      },
+      "name": "Split Actions",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        560
+      ],
+      "id": "63398e7e-514b-4f6b-8e46-ab79a36314bb"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "CALL_CUSTOMER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "30c8e9d3-65a3-47ff-ad90-83d11f85f3d3"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "04921a0f-36c7-430e-8138-00c9cb93ea9c",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "CALL_CARRIER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        560
+      ],
+      "id": "82c9f52f-a99c-4c60-bb2a-78797e0fa2ff",
+      "name": "Switch: Action Type"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Split Orders').item.json.userId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        416
+      ],
+      "id": "d17d3207-d76b-459b-919c-cf1b89d773f6",
+      "name": "Get User Profile",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=[VIETExpress] Cập nhật tình trạng khẩn cấp đơn hàng {{ $('Split Orders').item.json.orderCode }}",
+        "message": "=Kính gửi {{ $json.name }},\n\nChúng tôi gửi thư này để cập nhật thông tin về đơn hàng của quý khách.\n\n📦 **Chi tiết đơn hàng:**\n- Mã đơn hàng: {{ $('Split Orders').item.json.orderCode }}\n- Tuyến đường: {{ $('Split Orders').item.json.origin }} → {{ $('Split Orders').item.json.destination }}\n- Trạng thái hành trình: {{ $('Split Orders').item.json.status }} (Vị trí hiện tại: {{ $('Split Orders').item.json.currentLocation }})\n\n⏰ **Thông báo trễ hạn:**\n- Hạn giao dự kiến ban đầu: {{ $('Split Orders').item.json.slaMetrics.deadline }}\n- Mức độ chậm trễ: Quá hạn {{ Math.abs($('Split Orders').item.json.slaMetrics.timeToDeadline) }} phút\n\n💬 **Thông tin từ phòng Vận hành:**\n{{ $('Split Actions').item.json.details.reason }}\n\nVIETExpress vô cùng xin lỗi vì sự bất tiện này. Đại diện vận hành của chúng tôi sẽ chủ động liên lạc qua số điện thoại đăng ký của quý khách trong vòng {{ $('Split Actions').item.json.urgencyMinutes }} phút tới để thống nhất phương án giao hàng hoặc xử lý bồi hoàn thỏa đáng.\n\nTrân trọng,\nĐội ngũ Vận hành VIETExpress",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        416
+      ],
+      "id": "7f757d38-f51c-40be-9e24-173bcf24cb77",
+      "name": "Email to Customer",
+      "webhookId": "18c3c4fd-48ea-42e7-98b9-aa625fc5cb6f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JyeLeQrdVeBG2B1G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ops@vietexpress.vn",
+        "subject": "=[OPS ALERT] Yêu cầu liên hệ Đối tác vận chuyển - Đơn hàng {{ $('Split Orders').item.json.orderCode }} có nguy cơ vỡ SLA",
+        "message": "=CẢNH BÁO KHẨN CẤP ĐỘI NGŨ ĐIỀU PHỐI (OPS):\n\nPhát hiện đơn hàng có rủi ro vỡ cam kết SLA nghiêm trọng cần can thiệp liên hệ ngay với đối tác vận chuyển (Carrier).\n\n📦 **Thông tin đơn hàng:**\n- Mã đơn: {{ $('Split Orders').item.json.orderCode }}\n- Tuyến đường: {{ $('Split Orders').item.json.origin }} → {{ $('Split Orders').item.json.destination }}\n- Phân nhóm dịch vụ: {{ $('Split Orders').item.json.serviceType }}\n- Trạng thái hiện tại: {{ $('Split Orders').item.json.status }} (Vị trí: {{ $('Split Orders').item.json.currentLocation }})\n\n⏰ **Thông số SLA:**\n- Thời hạn cam kết: {{ $('Split Orders').item.json.slaMetrics.deadline }}\n- Đã quá hạn: {{ Math.abs($('Split Orders').item.json.slaMetrics.timeToDeadline) }} phút\n\n🤖 **Đề xuất xử lý từ AI (Độ tin cậy: {{ $('Split Actions').item.json.details.aiConfidence * 100 }}%):**\n- Lý do: {{ $('Split Actions').item.json.details.reason }}\n- Tuyến đường đề xuất điều chỉnh: {{ $('Split Actions').item.json.details.suggestedRoute || 'N/A' }}\n- Thời gian giới hạn xử lý: Trong vòng {{ $('Split Actions').item.json.urgencyMinutes }} phút.\n\nĐề nghị điều phối viên liên hệ ngay với đối tác vận tải để xác minh vị trí phương tiện và điều tốc lộ trình.\n\nTrân trọng,\nPhân hệ Giám sát Tự động SLA - VIETExpress",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -688,
+        592
+      ],
+      "id": "b9d17399-a5a5-4197-a925-65e39b4b9175",
+      "name": "Alert to Carrier Ops",
+      "webhookId": "cc55066a-031e-4009-af2f-445bae507a63",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JyeLeQrdVeBG2B1G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "interventions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "orderId",
+              "fieldValue": "={{ $('Split Orders').item.json.id }}"
+            },
+            {
+              "fieldId": "actionType",
+              "fieldValue": "={{ $('Split Actions').item.json.action }}"
+            },
+            {
+              "fieldId": "reason",
+              "fieldValue": "={{ $('Split Actions').item.json.details.reason }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "CUSTOMER_EMAILED"
+            },
+            {
+              "fieldId": "notifiedAt",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        416
+      ],
+      "id": "852e6aeb-1b15-4f48-83d8-8cd3596064c6",
+      "name": "Log Customer Contact",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "interventions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "orderId",
+              "fieldValue": "={{ $('Split Orders').item.json.id }}"
+            },
+            {
+              "fieldId": "actionType",
+              "fieldValue": "={{ $('Split Actions').item.json.action }} "
+            },
+            {
+              "fieldId": "reason",
+              "fieldValue": "={{ $('Split Actions').item.json.details.reason }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "CARRIER_OPS_NOTIFIED"
+            },
+            {
+              "fieldId": "notifiedAt",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        592
+      ],
+      "id": "9be65a2c-2602-429d-8bf1-8822206e0252",
+      "name": "Log Carrier Contact",
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "interventions",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "orderId",
+              "condition": "eq",
+              "keyValue": "={{ $('Split Orders').item.json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        304
+      ],
+      "id": "cbf9f5bb-804e-4b0f-b7cd-cd86329912ce",
+      "name": "Check Recent Log",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "LjjI0W63ZGBxmCtL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1808,
+        560
+      ],
+      "id": "65e76303-be06-4539-826c-c1b76db35df1",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule - Every 60 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch At-Risk Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch At-Risk Orders": {
+      "main": [
+        [
+          {
+            "node": "Split Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Orders": {
+      "main": [
+        [
+          {
+            "node": "Check Recent Log",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Has Recent Intervention?": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse output": {
+      "main": [
+        [
+          {
+            "node": "Split Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Actions": {
+      "main": [
+        [
+          {
+            "node": "Switch: Action Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Action Type": {
+      "main": [
+        [
+          {
+            "node": "Get User Profile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert to Carrier Ops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Profile": {
+      "main": [
+        [
+          {
+            "node": "Email to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email to Customer": {
+      "main": [
+        [
+          {
+            "node": "Log Customer Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert to Carrier Ops": {
+      "main": [
+        [
+          {
+            "node": "Log Carrier Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Customer Contact": {
+      "main": [
+        []
+      ]
+    },
+    "Check Recent Log": {
+      "main": [
+        [
+          {
+            "node": "Has Recent Intervention?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "078fbdf7-3177-4cfc-98d8-d4f07cb087ad",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ef622c93a68ceb2a9ce8a4595d6557c99ccab97fef24ed99bef0d88601f1cb84"
+  },
+  "id": "YCdUe2MfUCMccO3K",
+  "tags": []
+}

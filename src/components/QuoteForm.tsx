@@ -16,12 +16,9 @@ import {
 import { provinces, getDistricts, getWards } from '../lib/locations'
 
 const serviceOptions = [
-  { value: 'ftl', label: 'Vận chuyển trên 20kg' },
-  { value: 'ltl', label: 'Vận chuyển dưới 20kg' },
-  { value: '3pl', label: 'Dịch vụ 3PL' },
-  { value: 'express', label: 'Chuyển phát nhanh' },
+  { value: 'ftl', label: 'Vận chuyển nguyên xe (FTL)' },
+  { value: 'ltl', label: 'Vận chuyển ghép hàng (LTL)' },
   { value: 'cold', label: 'Vận tải lạnh' },
-  { value: 'doc', label: 'Chứng từ & Thủ tục' },
 ]
 
 const initialFormData = {
