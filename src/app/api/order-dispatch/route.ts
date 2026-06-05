@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
     if (vehicleType === 'heavy_truck') requiredLicense = 'heavy_truck'
 
     // Filter drivers having the compatible license
-    let eligibleDrivers = dbDrivers.filter(drv => drv.licenses.includes(requiredLicense))
+    let eligibleDrivers = dbDrivers.filter(drv => (drv.licenses ?? []).includes(requiredLicense))
 
     // Fallback if no matching drivers: use all drivers or mock fallback
     if (eligibleDrivers.length === 0) {
