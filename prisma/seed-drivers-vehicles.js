@@ -96,7 +96,7 @@ async function main() {
           region: region.name,
           status: 'available',
           workload: 0,
-          licenses: [vehicleType],
+          licenses: vehicleType,
           vehicleId: vehicle ? vehicle.id : null,
         },
       })

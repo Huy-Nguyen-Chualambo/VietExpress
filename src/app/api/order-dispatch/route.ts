@@ -40,6 +40,33 @@ function getRegion(province: string) {
   return 'Nam'
 }
 
+function normalizeLicenses(licenses: string[] | string | null | undefined): string[] {
+  if (!licenses) return []
+
+  if (Array.isArray(licenses)) {
+    return licenses.filter((license): license is string => typeof license === 'string' && license.trim().length > 0)
+  }
+
+  const trimmed = licenses.trim()
+  if (!trimmed) return []
+
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((license): license is string => typeof license === 'string')
+      }
+    } catch {
+      // Fall through to comma-separated parsing.
+    }
+  }
+
+  return trimmed
+    .split(',')
+    .map((license) => license.trim())
+    .filter(Boolean)
+}
+
 /**
  * POST /api/order-dispatch
  * Dispatches an order using rule-based + simulated AI orchestration
@@ -192,20 +219,20 @@ export async function POST(req: NextRequest) {
     })
 
     // Map required license type based on vehicleType
-    let requiredLicense = 'motorbike'
+    let requiredLicense: string = 'motorbike'
     if (vehicleType === 'van') requiredLicense = 'car'
     if (vehicleType === 'truck' || vehicleType === 'refrigerated_truck') requiredLicense = 'truck'
     if (vehicleType === 'heavy_truck') requiredLicense = 'heavy_truck'
 
     // Filter drivers having the compatible license
-    let eligibleDrivers = dbDrivers.filter(drv => (drv.licenses ?? []).includes(requiredLicense))
+    let eligibleDrivers = dbDrivers.filter(drv => normalizeLicenses(drv.licenses).includes(requiredLicense))
 
     // Fallback if no matching drivers: use all drivers or mock fallback
     if (eligibleDrivers.length === 0) {
       eligibleDrivers = dbDrivers.length > 0 ? dbDrivers : [
-        { id: 'mock-drv-001', name: 'Nguyễn Văn Bắc (Mock)', region: 'Bắc', workload: 2, licenses: ['motorbike'], vehicle: null },
-        { id: 'mock-drv-002', name: 'Trần Minh Nam (Mock)', region: 'Nam', workload: 1, licenses: ['car'], vehicle: null },
-        { id: 'mock-drv-003', name: 'Lê Hoàng Trung (Mock)', region: 'Trung', workload: 4, licenses: ['motorbike'], vehicle: null }
+        { id: 'mock-drv-001', name: 'Nguyễn Văn Bắc (Mock)', region: 'Bắc', workload: 2, licenses: 'motorbike', vehicle: null },
+        { id: 'mock-drv-002', name: 'Trần Minh Nam (Mock)', region: 'Nam', workload: 1, licenses: 'car', vehicle: null },
+        { id: 'mock-drv-003', name: 'Lê Hoàng Trung (Mock)', region: 'Trung', workload: 4, licenses: 'motorbike', vehicle: null }
       ] as any
     }
 
