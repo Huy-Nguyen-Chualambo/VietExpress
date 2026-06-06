@@ -9,6 +9,26 @@ type AiInsights = {
   recommendations?: string[]
 }
 
+/** Normalize aiInsights từ DB — đề phòng AI trả về sai format hoặc field là object thay vì string/array */
+function normalizeAiInsights(raw: unknown): AiInsights | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+
+  const summary = typeof obj.executiveSummary === 'string' ? obj.executiveSummary : null
+
+  const risks = Array.isArray(obj.risks)
+    ? obj.risks.filter((r): r is string => typeof r === 'string')
+    : []
+
+  const recommendations = Array.isArray(obj.recommendations)
+    ? obj.recommendations.filter((r): r is string => typeof r === 'string')
+    : []
+
+  if (!summary && risks.length === 0 && recommendations.length === 0) return null
+
+  return { executiveSummary: summary ?? undefined, risks, recommendations }
+}
+
 export default async function EmployeeStatsPage() {
   await requireEmployeeSession()
 
@@ -131,8 +151,8 @@ export default async function EmployeeStatsPage() {
               {dailyKpiReports.map((report) => {
                 const summary = report.summary as Record<string, number | null> | null
                 const operations = report.operations as Record<string, number | null> | null
-                const financial = report.financial as (Record<string, number | null> & { aiInsights?: AiInsights }) | null
-                const aiInsights = financial?.aiInsights
+                const financial = report.financial as (Record<string, unknown>) | null
+                const aiInsights = normalizeAiInsights(financial?.aiInsights)
 
                 const reportDate = new Intl.DateTimeFormat('vi-VN', {
                   weekday: 'short',
