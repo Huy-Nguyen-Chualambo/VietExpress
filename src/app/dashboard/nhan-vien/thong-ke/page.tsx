@@ -24,13 +24,29 @@ function normalizeAiInsights(raw: unknown): AiInsights | null {
       .join(' | ')
   }
 
-  // risks / recommendations: lọc chỉ giữ string, bỏ object/number
+  // Normalize một phần tử array — string giữ nguyên, object {title, detail} gộp lại
+  function normalizeItem(item: unknown): string | null {
+    if (typeof item === 'string') return item
+    if (item && typeof item === 'object') {
+      const o = item as Record<string, unknown>
+      // Groq hay trả {title, detail} hoặc {title, description} hoặc {text}
+      if (typeof o.title === 'string' && typeof o.detail === 'string') return `${o.title}: ${o.detail}`
+      if (typeof o.title === 'string' && typeof o.description === 'string') return `${o.title}: ${o.description}`
+      if (typeof o.title === 'string') return o.title
+      if (typeof o.text === 'string') return o.text
+      // Fallback: join tất cả string values
+      const vals = Object.values(o).filter((v): v is string => typeof v === 'string')
+      if (vals.length > 0) return vals.join(': ')
+    }
+    return null
+  }
+
   const risks = Array.isArray(obj.risks)
-    ? obj.risks.filter((r): r is string => typeof r === 'string')
+    ? obj.risks.map(normalizeItem).filter((r): r is string => r !== null)
     : []
 
   const recommendations = Array.isArray(obj.recommendations)
-    ? obj.recommendations.filter((r): r is string => typeof r === 'string')
+    ? obj.recommendations.map(normalizeItem).filter((r): r is string => r !== null)
     : []
 
   if (!summary && risks.length === 0 && recommendations.length === 0) return null
