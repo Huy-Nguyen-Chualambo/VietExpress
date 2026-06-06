@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { requireEmployeeSession } from '@/lib/employee-portal'
 import { formatCurrencyVnd } from '@/lib/customer-portal'
-import { BarChart3, CalendarDays, Package, TrendingUp, Users } from 'lucide-react'
+import { BarChart3, CalendarDays, Package, TrendingUp, Users, AlertTriangle, Lightbulb, BrainCircuit } from 'lucide-react'
+
+type AiInsights = {
+  executiveSummary?: string
+  risks?: string[]
+  recommendations?: string[]
+}
 
 export default async function EmployeeStatsPage() {
   await requireEmployeeSession()
@@ -125,7 +131,8 @@ export default async function EmployeeStatsPage() {
               {dailyKpiReports.map((report) => {
                 const summary = report.summary as Record<string, number | null> | null
                 const operations = report.operations as Record<string, number | null> | null
-                const financial = report.financial as Record<string, number | null> | null
+                const financial = report.financial as (Record<string, number | null> & { aiInsights?: AiInsights }) | null
+                const aiInsights = financial?.aiInsights
 
                 const reportDate = new Intl.DateTimeFormat('vi-VN', {
                   weekday: 'short',
@@ -177,6 +184,56 @@ export default async function EmployeeStatsPage() {
                       <div className="rounded-xl border border-border bg-white p-3">Notifications: {summary?.totalNotifications ?? 0}</div>
                       <div className="rounded-xl border border-border bg-white p-3">Tổng action logs: {summary?.totalActionLogs ?? 0}</div>
                     </div>
+
+                    {aiInsights && (
+                      <div className="mt-4 space-y-3">
+                        {aiInsights.executiveSummary && (
+                          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-2">
+                              <BrainCircuit className="w-3.5 h-3.5" />
+                              Nhận định AI
+                            </div>
+                            <p className="text-sm text-slate-700 leading-relaxed">{aiInsights.executiveSummary}</p>
+                          </div>
+                        )}
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {aiInsights.risks && aiInsights.risks.length > 0 && (
+                            <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-red-700 mb-2">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Rủi ro ({aiInsights.risks.length})
+                              </div>
+                              <ul className="space-y-1.5">
+                                {aiInsights.risks.map((risk, i) => (
+                                  <li key={i} className="text-xs text-slate-700 flex gap-2">
+                                    <span className="text-red-400 mt-0.5 shrink-0">•</span>
+                                    <span>{risk}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {aiInsights.recommendations && aiInsights.recommendations.length > 0 && (
+                            <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-green-700 mb-2">
+                                <Lightbulb className="w-3.5 h-3.5" />
+                                Khuyến nghị ({aiInsights.recommendations.length})
+                              </div>
+                              <ul className="space-y-1.5">
+                                {aiInsights.recommendations.map((rec, i) => (
+                                  <li key={i} className="text-xs text-slate-700 flex gap-2">
+                                    <span className="text-green-500 mt-0.5 shrink-0">→</span>
+                                    <span>{rec}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
