@@ -493,15 +493,15 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
           />
         </div>
 
-        {/* Price display breakdown 
+        {/* Price display breakdown */}
         {priceResult && (
           <div className="rounded-xl border border-brand/20 bg-brand-soft/30 p-4 space-y-2 animate-fade-up">
-            <div className="flex items-center justify-between">
+            {/*<div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-brand uppercase tracking-wider">Chi tiết phí vận chuyển</span>
               <span className="text-xs text-muted-foreground">{priceResult.routeType}</span>
-            </div>
+            </div>*/}
             
-            <div className="text-sm space-y-1 text-muted-foreground">
+            {/*<div className="text-sm space-y-1 text-muted-foreground">
               <div className="flex justify-between">
                 <span>Cước cơ bản (lên đến {priceResult.baseWeight}kg):</span>
                 <span className="font-medium text-foreground">{priceResult.basePrice.toLocaleString('vi-VN')} VND</span>
@@ -513,18 +513,18 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
                   <span className="font-medium text-foreground">+{priceResult.extraCharge.toLocaleString('vi-VN')} VND</span>
                 </div>
               )}
-            </div>
+            </div>*/}
 
             <div className="pt-2 border-t border-border flex justify-between items-center">
-              <span className="text-sm font-bold text-foreground">Tổng chi phí dự kiến:</span>
+              <span className="text-sm font-bold text-foreground">Tổng chi phí:</span>
               <span className="text-lg font-extrabold text-brand font-display">
                 {priceResult.total.toLocaleString('vi-VN')} VND
               </span>
             </div>
           </div>
-        )}*/}
+        )}
 
-        {/* Dynamic Interactive controls */}
+        {/* Dynamic Interactive controls 
         <div className="grid grid-cols-2 gap-3 pt-2">
           {/* Price Calculation Trigger Button */}
           <button
