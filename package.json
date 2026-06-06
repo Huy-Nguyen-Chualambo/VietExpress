@@ -14,7 +14,9 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
-    "seed:sla-demo": "node prisma/seed-sla-demo.js"
+    "seed:sla-demo": "node prisma/seed-sla-demo.js",
+    "seed:kpi-demo": "node prisma/seed-kpi-demo.js",
+    "seed:kpi-workflow": "node prisma/seed-kpi-workflow.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
