@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       })
       .filter((o) => o.slaMetrics.isAtRisk || o.slaMetrics.isBreached)
       .sort((a, b) => a.slaMetrics.timeToDeadline - b.slaMetrics.timeToDeadline)
-      .slice(0, 50) // Limit to 50 for performance
+      .slice(0, 3) // Demo mode: only return 3 alerts
 
     return NextResponse.json({
       success: true,
