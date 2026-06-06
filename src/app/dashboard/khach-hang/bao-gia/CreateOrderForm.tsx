@@ -493,7 +493,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
           />
         </div>
 
-        {/* Price display breakdown */}
+        {/* Price display breakdown 
         {priceResult && (
           <div className="rounded-xl border border-brand/20 bg-brand-soft/30 p-4 space-y-2 animate-fade-up">
             <div className="flex items-center justify-between">
@@ -522,7 +522,7 @@ export default function CreateOrderForm({ onSubmitAction }: CreateOrderFormProps
               </span>
             </div>
           </div>
-        )}
+        )}*/}
 
         {/* Dynamic Interactive controls */}
         <div className="grid grid-cols-2 gap-3 pt-2">
