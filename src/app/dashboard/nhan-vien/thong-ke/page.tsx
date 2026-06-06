@@ -9,13 +9,22 @@ type AiInsights = {
   recommendations?: string[]
 }
 
-/** Normalize aiInsights từ DB — đề phòng AI trả về sai format hoặc field là object thay vì string/array */
+/** Normalize aiInsights từ DB — xử lý các trường hợp AI trả về sai format */
 function normalizeAiInsights(raw: unknown): AiInsights | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Record<string, unknown>
 
-  const summary = typeof obj.executiveSummary === 'string' ? obj.executiveSummary : null
+  // executiveSummary: nếu là object (Groq trả về key-value metrics), join thành string
+  let summary: string | null = null
+  if (typeof obj.executiveSummary === 'string') {
+    summary = obj.executiveSummary
+  } else if (obj.executiveSummary && typeof obj.executiveSummary === 'object') {
+    summary = Object.entries(obj.executiveSummary as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(' | ')
+  }
 
+  // risks / recommendations: lọc chỉ giữ string, bỏ object/number
   const risks = Array.isArray(obj.risks)
     ? obj.risks.filter((r): r is string => typeof r === 'string')
     : []
