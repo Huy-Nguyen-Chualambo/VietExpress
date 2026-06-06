@@ -11,7 +11,6 @@ const footerLinks = {
   services: [
     { name: 'Vận tải nguyên xe (FTL)', href: '#' },
     { name: 'Vận tải ghép hàng (LTL)', href: '#' },
-    { name: 'Dịch vụ 3PL', href: '#' },
     { name: 'Chuyển phát nhanh', href: '#' },
     { name: 'Vận tải lạnh', href: '#' },
   ],
